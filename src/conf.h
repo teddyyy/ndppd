@@ -27,13 +27,11 @@ NDPPD_NS_BEGIN
 
 class conf {
 public:
-
-private:
     std::string _value;
 
     bool _is_block;
 
-    std::multimap<std::string, ptr<conf> > _map;
+    std::multimap<std::string, std::shared_ptr<conf> > _map;
 
     void dump(logger& l, int level) const;
 
@@ -46,12 +44,12 @@ private:
 public:
     conf();
 
-    static ptr<conf> load(const std::string& path);
+    static std::shared_ptr<conf> load(const std::string &path);
 
     bool is_block() const;
 
-    ptr<conf> operator[](const std::string& name) const;
-    ptr<conf> operator()(const std::string& name, int index = 0) const;
+    std::shared_ptr<conf> operator[](const std::string &name) const;
+    std::shared_ptr<conf> operator()(const std::string &name, int index = 0) const;
 
     operator const std::string&() const;
     operator int() const;
@@ -63,9 +61,9 @@ public:
 
     bool empty() const;
 
-    std::vector<ptr<conf> > find_all(const std::string& name) const;
+    std::vector<std::shared_ptr<conf> > find_all(const std::string& name) const;
 
-    ptr<conf> find(const std::string& name, int index = 0) const;
+    std::shared_ptr<conf> find(const std::string& name, int index = 0) const;
 
     void dump(int pri = LOG_INFO) const;
 

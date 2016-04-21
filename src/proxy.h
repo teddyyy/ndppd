@@ -16,8 +16,8 @@
 #pragma once
 
 #include <string>
-#include <vector>
-#include <map>
+#include <list>
+#include <memory>
 
 #include <sys/poll.h>
 
@@ -25,25 +25,24 @@
 
 NDPPD_NS_BEGIN
 
-class iface;
-class rule;
+struct proxy : std::enable_shared_from_this<proxy> {
+    static std::shared_ptr<proxy_s> create(
+        const std::shared_ptr<iface_s> &iface);
 
-class proxy {
-public:
-    static ptr<proxy> create(const ptr<iface>& ifa);
+    static std::shared_ptr<proxy_s> create(const std::string &ifname);
 
-    static ptr<proxy> open(const std::string& ifn);
+    void handle_solicit(const address_s &saddr, const address_s &daddr,
+        const class address &taddr);
 
-    void handle_solicit(const address& saddr, const address& daddr,
-        const address& taddr);
+    void remove_session(const std::shared_ptr<session_s> &session);
 
-    void remove_session(const ptr<session>& se);
+    std::shared_ptr<rule_s> add_rule(const cidr_s &cidr,
+        const std::shared_ptr<iface_s> &iface);
 
-    ptr<rule> add_rule(const address& addr, const ptr<iface>& ifa);
+    std::shared_ptr<rule_s> add_rule(const cidr_s &cidr,
+        bool aut = false);
 
-    ptr<rule> add_rule(const address& addr, bool aut = false);
-
-    const ptr<iface>& ifa() const;
+    std::shared_ptr<iface_s> iface() const;
 
     bool router() const;
 
@@ -58,15 +57,13 @@ public:
     void ttl(int val);
 
 private:
-    static std::list<ptr<proxy> > _list;
+    static std::list<std::shared_ptr<proxy> > _list;
 
-    weak_ptr<proxy> _ptr;
+    std::shared_ptr<iface_s> _iface;
 
-    ptr<iface> _ifa;
+    std::list<std::shared_ptr<rule_s> > _rules;
 
-    std::list<ptr<rule> > _rules;
-
-    std::list<ptr<session> > _sessions;
+    std::list<std::shared_ptr<session_s> > _sessions;
 
     bool _router;
 

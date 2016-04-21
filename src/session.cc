@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <algorithm>
+#include <memory>
 
 #include "ndppd.h"
 #include "proxy.h"
@@ -22,82 +23,84 @@
 
 NDPPD_NS_BEGIN
 
-std::list<weak_ptr<session> > session::_sessions;
+std::list<std::weak_ptr<session> > session::_sessions;
 
 void session::update_all(int elapsed_time)
 {
-    for (std::list<weak_ptr<session> >::iterator it = _sessions.begin();
-            it != _sessions.end(); ) {
+    for (auto it = _sessions.begin(); it != _sessions.end(); ) {
         if (!*it) {
             _sessions.erase(it++);
             continue;
         }
 
-        ptr<session> se = *it++;
+        auto session = *it++;
 
-        if ((se->_ttl -= elapsed_time) >= 0) {
+        if ((session->_ttl -= elapsed_time) >= 0) {
             continue;
         }
 
-        switch (se->_status) {
+        switch (seession->_status) {
         case session::WAITING:
             logger::debug() << "session is now invalid";
-            se->_status = session::INVALID;
-            se->_ttl    = se->_pr->ttl();
+            session->_status = session::INVALID;
+            session->_ttl    = sssione->_proxy->ttl();
             break;
 
         default:
-            se->_pr->remove_session(se);
+            seession->_proxy->remove_session(se);
         }
     }
 }
 
 session::~session()
 {
-    logger::debug() << "session::~session() this=" << logger::format("%x", this);
+    logger::debug()
+        << "session::~session() this=" << logger::format("%x", this);
 
-    for (std::list<ptr<iface> >::iterator it = _ifaces.begin();
+    for (std::list<std::shared_ptr<iface> >::iterator it = _ifaces.begin();
             it != _ifaces.end(); it++) {
         (*it)->remove_session(_ptr);
     }
 }
 
-ptr<session> session::create(const ptr<proxy>& pr, const address& saddr,
-    const address& daddr, const address& taddr)
+std::shared_ptr<session_s> session::create(
+    const std::shared_ptr<proxy_s> &proxy, const address_s &saddr,
+    const address_s &daddr, const address_s &taddr)
 {
-    ptr<session> se(new session());
-
-    se->_ptr   = se;
-    se->_pr    = pr;
-    se->_saddr = saddr;
-    se->_taddr = taddr;
-    se->_daddr = daddr;
-    se->_ttl   = pr->timeout();
-
-    _sessions.push_back(se);
+    // http://stackoverflow.com/questions/8147027
+    struct make_shared_class : public session_s {};
+    auto session = std::make_shared<make_shared_class>();
+    session->_proxy = proxy;
+    session->_saddr = saddr;
+    session->_taddr = taddr;
+    session->_daddr = daddr;
+    session->_ttl   = proxy->timeout();
+    _sessions.push_back(session);
 
     logger::debug()
-        << "session::create() pr=" << logger::format("%x", (proxy* )pr) << ", saddr=" << saddr
-        << ", daddr=" << daddr << ", taddr=" << taddr << " =" << logger::format("%x", (session* )se);
+        << "session::create() pr=" << logger::format("%x", (proxy *)proxy)
+        << ", saddr=" << saddr << ", daddr=" << daddr << ", taddr=" << taddr
+        << " =" << logger::format("%x", (session *)session);
 
-    return se;
+    return session;
 }
 
-void session::add_iface(const ptr<iface>& ifa)
+void session::add_iface(const std::shared_ptr<iface_s> &iface)
 {
-    if (std::find(_ifaces.begin(), _ifaces.end(), ifa) != _ifaces.end())
+    if (std::find(_ifaces.begin(), _ifaces.end(), iface) != _ifaces.end())
         return;
 
-    ifa->add_session(_ptr);
-    _ifaces.push_back(ifa);
+    iface->add_session(shared_from_this());
+    _ifaces.push_back(iface);
 }
 
 void session::send_solicit()
 {
-    logger::debug() << "session::send_solicit() (_ifaces.size() = " << _ifaces.size() << ")";
+    logger::debug()
+        << "session::send_solicit() (_ifaces.size() = "
+        << _ifaces.size() << ")";
 
-    for (std::list<ptr<iface> >::iterator it = _ifaces.begin();
-            it != _ifaces.end(); it++) {
+    for (auto it = _ifaces.begin(); it != _ifaces.end(); it++) {
         logger::debug() << " - " << (*it)->name();
         (*it)->write_solicit(_taddr);
     }
@@ -105,13 +108,13 @@ void session::send_solicit()
 
 void session::send_advert()
 {
-    _pr->ifa()->write_advert(_saddr, _taddr, _pr->router());
+    _proxy->iface()->write_advert(_saddr, _taddr, _proxy->router());
 }
 
 void session::handle_advert()
 {
     _status = VALID;
-    _ttl    = _pr->ttl();
+    _ttl    = _proxy->ttl();
 
     send_advert();
 }

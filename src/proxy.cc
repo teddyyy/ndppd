@@ -1,5 +1,5 @@
 // ndppd - NDP Proxy Daemon
-// Copyright (C) 2011  Daniel Adolfsson <daniel@priv.nu>
+// Copyright (C) 2011-2016  Daniel Adolfsson <daniel@priv.nu>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#include <memory>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,41 +28,31 @@
 
 NDPPD_NS_BEGIN
 
-std::list<ptr<proxy> > proxy::_list;
+std::list<std::shared_ptr<proxy> > proxy::_list;
 
 proxy::proxy() :
     _router(true), _ttl(30000), _timeout(500)
 {
 }
 
-ptr<proxy> proxy::create(const ptr<iface>& ifa)
+std::shared_ptr<proxy_s> proxy::create(
+    const std::shared_ptr<iface_s> &iface)
 {
-    ptr<proxy> pr(new proxy());
-    pr->_ptr = pr;
-    pr->_ifa = ifa;
-
-    _list.push_back(pr);
-
-    ifa->pr(pr);
-
-    logger::debug() << "proxy::create() if=" << ifa->name();
-
-    return pr;
+    // http://stackoverflow.com/questions/8147027
+    struct make_shared_class : public proxy_s {};
+    auto proxy = std::make_shared<make_shared_class>();
+    proxy->_iface = iface;
+    _list.push_back(proxy);
+    return proxy;
 }
 
-ptr<proxy> proxy::open(const std::string& ifname)
+std::shared_ptr<proxy_s> proxy::create(const std::string &ifname)
 {
-    ptr<iface> ifa = iface::open_pfd(ifname);
-
-    if (!ifa) {
-        return ptr<proxy>();
-    }
-
-    return create(ifa);
+    return create(iface::open(ifname));
 }
 
-void proxy::handle_solicit(const address& saddr, const address& daddr,
-    const address& taddr)
+void proxy::handle_solicit(const address_s &saddr, const address_s &daddr,
+    const address_s &taddr)
 {
     logger::debug()
         << "proxy::handle_solicit() saddr=" << saddr.to_string()
@@ -70,16 +61,14 @@ void proxy::handle_solicit(const address& saddr, const address& daddr,
     // Let's check this proxy's list of sessions to see if we can
     // find one with the same target address.
 
-    for (std::list<ptr<session> >::iterator sit = _sessions.begin();
-            sit != _sessions.end(); sit++) {
-
+    for (auto sit = _sessions.begin(); sit != _sessions.end(); sit++) {
         if ((*sit)->taddr() == taddr) {
             switch ((*sit)->status()) {
-            case session::WAITING:
-            case session::INVALID:
+            case session::status_enum::WAITING:
+            case session::status_enum::INVALID:
                 break;
 
-            case session::VALID:
+            case session::status_enum::VALID:
                 (*sit)->send_advert();
             }
 
@@ -90,70 +79,74 @@ void proxy::handle_solicit(const address& saddr, const address& daddr,
     // Since we couldn't find a session that matched, we'll try to find
     // a matching rule instead, and then set up a new session.
 
-    ptr<session> se;
+    std::shared_ptr<session_s> session;
 
-    for (std::list<ptr<rule> >::iterator it = _rules.begin();
-            it != _rules.end(); it++) {
-        ptr<rule> ru = *it;
+    for (auto it = _rules.begin(); it != _rules.end(); it++) {
+        auto rule = *it;
 
-        logger::debug() << "checking " << ru->addr() << " against " << taddr;
+        logger::debug() << "checking " << rule->cidr() << " against " << taddr;
 
-        if (ru->addr() == taddr) {
-            if (!se) {
-                se = session::create(_ptr, saddr, daddr, taddr);
+        if (rule->cidr().contains(taddr)) {
+            if (!session) {
+                session = session::create(shared_from_this(), saddr, daddr, 
+                                          taddr);
             }
 
-            if (ru->is_auto()) {
-                ptr<route> rt = route::find(taddr);
+            if (rule->is_auto()) {
+                std::shared_ptr<route> route = route::find(taddr);
 
-                if (rt->ifname() == _ifa->name()) {
-                    logger::debug() << "skipping route since it's using interface " << rt->ifname();
+                if (route->ifname() == _iface->name()) {
+                    logger::debug()
+                        << "skipping route since it's using interface "
+                        << route->ifname();
                 } else {
-                    ptr<iface> ifa = rt->ifa();
+                    auto iface = route->iface();
 
-                    if (ifa && (ifa != ru->ifa())) {
-                        se->add_iface(ifa);
+                    if (iface && (iface != rule->iface())) {
+                        session->add_iface(iface);
                     }
                 }
-            } else if (!ru->ifa()) {
+            } else if (!rule->iface()) {
                 // This rule doesn't have an interface, and thus we'll consider
                 // it "static" and immediately send the response.
-                se->handle_advert();
+                session->handle_advert();
                 return;
             } else {
-                se->add_iface((*it)->ifa());
+                session->add_iface((*it)->iface());
             }
         }
     }
 
-    if (se) {
-        _sessions.push_back(se);
-        se->send_solicit();
+    if (session) {
+        _sessions.push_back(session);
+        session->send_solicit();
     }
 }
 
-ptr<rule> proxy::add_rule(const address& addr, const ptr<iface>& ifa)
+std::shared_ptr<rule_s> proxy::add_rule(const cidr_s &cidr,
+    const std::shared_ptr<iface_s> &iface)
 {
-    ptr<rule> ru(rule::create(_ptr, addr, ifa));
-    _rules.push_back(ru);
-    return ru;
+    std::shared_ptr<rule_s> rule(rule::create(shared_from_this(), cidr, iface));
+    _rules.push_back(rule);
+    return rule;
 }
 
-ptr<rule> proxy::add_rule(const address& addr, bool aut)
+std::shared_ptr<rule_s> proxy::add_rule(const cidr_s &cidr, bool auto_)
 {
-    ptr<rule> ru(rule::create(_ptr, addr, aut));
-    _rules.push_back(ru);
-    return ru;
+    std::shared_ptr<rule_s> rule(
+        rule::create(shared_from_this(), cidr, nullptr, auto_));
+    _rules.push_back(rule);
+    return rule;
 }
 
-void proxy::remove_session(const ptr<session>& se)
+void proxy::remove_session(const std::shared_ptr<session_s>& session)
 {
-    _sessions.remove(se);
+    _sessions.remove(session);
 }
 
-const ptr<iface>& proxy::ifa() const
+std::shared_ptr<iface_s> proxy::iface() const
 {
-    return _ifa;
+    return _iface;
 }
 
 bool proxy::router() const

@@ -22,36 +22,29 @@
 #include <sys/poll.h>
 
 #include "ndppd.h"
+#include "cidr.h"
 
 NDPPD_NS_BEGIN
 
-class iface;
-class proxy;
+struct rule {
+    /* Returns a new rule instance. */
+    static std::shared_ptr<rule_s> create(
+        const std::shared_ptr<proxy_s> &proxy, const cidr &cidr,
+        const std::shared_ptr<iface_s> &iface = {}, bool auto_ = false);
 
-class rule {
-public:
-    static ptr<rule> create(const ptr<proxy>& pr, const address& addr, const ptr<iface>& ifa);
+    const cidr_s &cidr() const;
 
-    static ptr<rule> create(const ptr<proxy>& pr, const address& addr, bool stc = true);
-
-    const address& addr() const;
-
-    ptr<iface> ifa() const;
+    std::shared_ptr<iface_s> iface() const;
 
     bool is_auto() const;
 
-    bool check(const address& addr) const;
+    bool check(const address &addr) const;
 
 private:
-    weak_ptr<rule> _ptr;
-
-    weak_ptr<proxy> _pr;
-
-    ptr<iface> _ifa;
-
-    address _addr;
-
-    bool _aut;
+    std::weak_ptr<proxy_s> _proxy;
+    std::shared_ptr<iface_s> _iface;
+    cidr_s _cidr;
+    bool _auto;
 
     rule();
 };

@@ -1,5 +1,5 @@
 // ndppd - NDP Proxy Daemon
-// Copyright (C) 2011  Daniel Adolfsson <daniel@priv.nu>
+// Copyright (C) 2011-2016  Daniel Adolfsson <daniel@priv.nu>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -13,9 +13,7 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <memory>
 
 #include "ndppd.h"
 #include "rule.h"
@@ -24,57 +22,44 @@
 
 NDPPD_NS_BEGIN
 
-rule::rule()
-{
+rule::rule() {
 }
 
-ptr<rule> rule::create(const ptr<proxy>& pr, const address& addr, const ptr<iface>& ifa)
+std::shared_ptr<rule_s> rule::create(const std::shared_ptr<proxy_s> &proxy,
+    const cidr_s &cidr, const std::shared_ptr<iface_s> &iface, bool auto_)
 {
-    ptr<rule> ru(new rule());
-    ru->_ptr  = ru;
-    ru->_pr   = pr;
-    ru->_ifa  = ifa;
-    ru->_addr = addr;
-    ru->_aut  = false;
-
-    logger::debug() << "rule::create() if=" << pr->ifa()->name() << ", addr=" << addr;
-
-    return ru;
-}
-
-ptr<rule> rule::create(const ptr<proxy>& pr, const address& addr, bool aut)
-{
-    ptr<rule> ru(new rule());
-    ru->_ptr   = ru;
-    ru->_pr    = pr;
-    ru->_addr  = addr;
-    ru->_aut   = aut;
-
     logger::debug()
-        << "rule::create() if=" << pr->ifa()->name().c_str() << ", addr=" << addr
-        << ", auto=" << (aut ? "yes" : "no");
+        << "rule::create() iface=" << proxy->iface()->name()
+        << ", cidr=" << cidr;
 
-    return ru;
+    // http://stackoverflow.com/questions/8147027
+    struct make_shared_class : public rule_s {};
+    auto rule(std::make_shared<make_shared_class>());
+    rule->_cidr  = cidr;
+    rule->_iface = iface;
+    rule->_proxy = proxy;
+    rule->_auto  = auto_;
+    return rule;
 }
 
-const address& rule::addr() const
+const cidr_s &rule::cidr() const
 {
-    return _addr;
+    return _cidr;
 }
 
-ptr<iface> rule::ifa() const
+std::shared_ptr<iface_s> rule::iface() const
 {
-    return _ifa;
+    return _iface;
 }
 
 bool rule::is_auto() const
 {
-    return _aut;
+    return _auto;
 }
 
-bool rule::check(const address& addr) const
+bool rule::check(const address_s &address) const
 {
-    return _addr == addr;
+    return _cidr.contains(address);
 }
 
 NDPPD_NS_END

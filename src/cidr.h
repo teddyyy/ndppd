@@ -19,26 +19,38 @@
 #include <netinet/ip6.h>
 
 #include "ndppd.h"
+#include "address.h"
 
 NDPPD_NS_BEGIN
 
-class address {
-    address();
-    address(const address &addr);
-    address(const std::string &str);
-    address(const char *str);
-    address(const in6_addr &addr);
+class iface;
 
-    const struct in6_addr &c_addr() const;
-    struct in6_addr &addr();
+class cidr {
+private:
+    uint32_t _addr[4];
+    uint32_t _mask[4];
 
-    // Compare _a/_m against a._a.
-    bool operator==(const address_s& addr) const;
-    bool operator!=(const address_s& addr) const;
+    void prefix(int prefix);
+
+public:
+    cidr();
+    cidr(const std::string &str);
+    cidr(const char *str);
+    cidr(const in6_addr& addr);
+    cidr(const in6_addr& addr, const in6_addr& mask);
+    cidr(const in6_addr& addr, int prefix);
+
+    const struct in6_addr &addr() const;
+
+    const struct in6_addr &mask() const;
 
     const std::string to_string() const;
 
-    bool parse_string(const std::string& str);
+    // Returns true if the CIDR contains the specified address. */
+    bool contains(const address &address) const;
+
+    // Returns the prefix length. */
+    int prefix() const;
 
     bool is_unicast() const;
 
@@ -46,8 +58,6 @@ class address {
 
     operator std::string() const;
 
-private:
-    uint32_t _addr[4];
 };
 
 NDPPD_NS_END

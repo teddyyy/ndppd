@@ -15,30 +15,36 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 
-#define NDPPD_NS_BEGIN   namespace ndppd {
-#define NDPPD_NS_END     }
+#include <netinet/ip6.h>
+#include <netinet/icmp6.h>
 
-#define NDPPD_VERSION   "0.2.4"
-
-#include <assert.h>
-
-#include "logger.h"
+#include "ndppd.h"
 
 NDPPD_NS_BEGIN
-typedef struct proxy    proxy_s;
-typedef struct iface    iface_s;
-typedef struct cidr     cidr_s;
-typedef struct address  address_s;
-typedef struct session  session_s;
-typedef struct rule     rule_s;
+
+class packet {
+    uint8_t _data[1024];
+
+    // A number of helper methods to access various parts of the packet.
+
+    uint8_t *data();
+    const uint8_t *c_data() const;
+    struct ip6_hdr &ip6();
+    const struct ip6_hdr &c_ip6() const;
+    struct icmp6_hdr &icmp6();
+    const struct icmp6_hdr &c_icmp6() const;
+    struct in6_addr &target();
+    const struct in6_addr &c_target() const;
+    struct nd_opt_hdr *option(int type);
+    void update_icmp6_checksum();
+
+public:
+    static packet create_solicit_packet();
+
+    int type() const;
+    size_t length() const;
+
+
+};
 
 NDPPD_NS_END
-
-
-/*#include "conf.h"
-#include "address.h"
-
-#include "iface.h"
-#include "proxy.h"
-#include "session.h"
-#include "rule.h"*/

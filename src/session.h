@@ -16,40 +16,19 @@
 #pragma once
 
 #include <vector>
+#include <list>
 
 #include "ndppd.h"
+#include "address.h"
 
 NDPPD_NS_BEGIN
 
 class proxy;
 class iface;
 
-class session {
-private:
-    weak_ptr<session> _ptr;
-
-    weak_ptr<proxy> _pr;
-
-    address _saddr, _daddr, _taddr;
-
-    // An array of interfaces this session is monitoring for
-    // ND_NEIGHBOR_ADVERT on.
-    std::list<ptr<iface> > _ifaces;
-
-    // The remaining time in miliseconds the object will stay in the
-    // interface's session array or cache.
-    int _ttl;
-
-    int _status;
-
-    static std::list<weak_ptr<session> > _sessions;
-
-public:
-    enum
-    {
-        WAITING, // Waiting for an advert response.
-        VALID,   // Valid;
-        INVALID  // Invalid;
+struct session {
+    enum class status_enum {
+        WAITING, VALID, INVALID
     };
 
     static void update_all(int elapsed_time);
@@ -57,20 +36,21 @@ public:
     // Destructor.
     ~session();
 
-    static ptr<session> create(const ptr<proxy>& pr, const address& saddr,
-        const address& daddr, const address& taddr);
+    static std::shared_ptr<session> create(
+        const std::shared_ptr<proxy> &proxy, const address &saddr,
+        const address &daddr, const address &taddr);
 
-    void add_iface(const ptr<iface>& ifa);
+    void add_iface(const std::shared_ptr<iface> &iface);
 
-    const address& taddr() const;
+    const address &taddr() const;
 
-    const address& daddr() const;
+    const address &daddr() const;
 
-    const address& saddr() const;
+    const address &saddr() const;
 
-    int status() const;
+    status_enum status() const;
 
-    void status(int val);
+    void status(status_enum status);
 
     void handle_advert();
 
@@ -79,6 +59,24 @@ public:
     void send_solicit();
 
     void refesh();
+
+private:
+    static std::list<std::weak_ptr<session> > _sessions;
+
+    std::weak_ptr<proxy> _proxy;
+
+    address _saddr, _daddr, _taddr;
+
+    // An array of interfaces this session is monitoring for ND_NEIGHBOR_ADVERT.
+    std::list<std::shared_ptr<iface> > _ifaces;
+
+    // The remaining time in miliseconds the object will stay in the interfaces'
+    // session array or cache.
+    int _ttl;
+
+    status_enum _status;
+
+    session() { }
 };
 
 NDPPD_NS_END

@@ -31,6 +31,9 @@
 #include "ndppd.h"
 #include "route.h"
 
+#include "cidr.h"
+#include "conf.h"
+
 using namespace ndppd;
 
 static int daemonize()
@@ -60,67 +63,67 @@ static int daemonize()
     return 0;
 }
 
-static ptr<conf> load_config(const std::string& path)
+static std::shared_ptr<conf> load_config(const std::string &path)
 {
-    ptr<conf> cf, x_cf;
+    std::shared_ptr<conf> cf, x_cf;
 
     if (!(cf = conf::load(path)))
-        return (conf*)NULL;
+        return NULL;
 
-    std::vector<ptr<conf> >::const_iterator p_it;
+    std::vector<std::shared_ptr<conf> >::const_iterator p_it;
 
-    std::vector<ptr<conf> > proxies(cf->find_all("proxy"));
+    std::vector<std::shared_ptr<conf> > proxies(cf->find_all("proxy"));
 
     for (p_it = proxies.begin(); p_it != proxies.end(); p_it++) {
-        ptr<conf> pr_cf = *p_it;
+        std::shared_ptr<conf> pr_cf = *p_it;
 
         if (pr_cf->empty()) {
             logger::error() << "'proxy' section is missing interface name";
-            return (conf*)NULL;
+            return NULL;
         }
 
-        std::vector<ptr<conf> >::const_iterator r_it;
+        std::vector<std::shared_ptr<conf> >::const_iterator r_it;
 
-        std::vector<ptr<conf> > rules(pr_cf->find_all("rule"));
+        std::vector<std::shared_ptr<conf> > rules(pr_cf->find_all("rule"));
 
         for (r_it = rules.begin(); r_it != rules.end(); r_it++) {
-            ptr<conf> ru_cf =* r_it;
+            std::shared_ptr<conf> ru_cf =* r_it;
 
             if (ru_cf->empty()) {
                 logger::error() << "'rule' is missing an IPv6 address/net";
-                return (conf*)NULL;
+                return NULL;
             }
 
-            address addr(*ru_cf);
+            cidr cidr(*ru_cf);
 
             if (x_cf = ru_cf->find("iface")) {
                 if (ru_cf->find("static") || ru_cf->find("auto")) {
                     logger::error()
                         << "Only one of 'iface', 'auto' and 'static' may "
                         << "be specified.";
-                    return (conf*)NULL;
+                    return NULL;
                 }
                 if ((const std::string&)*x_cf == "") {
                     logger::error() << "'iface' expected an interface name";
-                    return (conf*)NULL;
+                    return NULL;
                 }
             } else if (ru_cf->find("static")) {
                 if (ru_cf->find("auto")) {
                     logger::error()
                         << "Only one of 'iface', 'auto' and 'static' may "
                         << "be specified.";
-                    return (conf*)NULL;
+                    return NULL;
                 }
-                if (addr.prefix() <= 120) {
+                if (cidr.prefix() <= 120) {
                     logger::warning()
-                        << "Low prefix length (" << addr.prefix()
+                        << "Low prefix length (" << cidr.prefix()
                         << " <= 120) when using 'static' method";
                 }
             } else if (!ru_cf->find("auto")) {
                 logger::error()
                     << "You must specify either 'iface', 'auto' or "
                     << "'static'";
-                return (conf*)NULL;
+                return NULL;
 
             }
         }
@@ -129,27 +132,27 @@ static ptr<conf> load_config(const std::string& path)
     return cf;
 }
 
-static bool configure(ptr<conf>& cf)
+static bool configure(std::shared_ptr<conf>& cf)
 {
-    ptr<conf> x_cf;
+    std::shared_ptr<conf> x_cf;
 
     if (!(x_cf = cf->find("route-ttl")))
         route::ttl(30000);
     else
         route::ttl(*x_cf);
 
-    std::vector<ptr<conf> >::const_iterator p_it;
+    std::vector<std::shared_ptr<conf> >::const_iterator p_it;
 
-    std::vector<ptr<conf> > proxies(cf->find_all("proxy"));
+    std::vector<std::shared_ptr<conf> > proxies(cf->find_all("proxy"));
 
     for (p_it = proxies.begin(); p_it != proxies.end(); p_it++) {
-        ptr<conf> pr_cf = *p_it;
+        std::shared_ptr<conf> pr_cf = *p_it;
 
         if (pr_cf->empty()) {
             return false;
         }
 
-        ptr<proxy> pr = proxy::open(*pr_cf);
+        std::shared_ptr<proxy> pr = proxy::open(*pr_cf);
 
         if (!pr) {
             return false;
@@ -170,21 +173,21 @@ static bool configure(ptr<conf>& cf)
         else
             pr->timeout(*x_cf);
 
-        std::vector<ptr<conf> >::const_iterator r_it;
+        std::vector<std::shared_ptr<conf> >::const_iterator r_it;
 
-        std::vector<ptr<conf> > rules(pr_cf->find_all("rule"));
+        std::vector<std::shared_ptr<conf> > rules(pr_cf->find_all("rule"));
 
         for (r_it = rules.begin(); r_it != rules.end(); r_it++) {
-            ptr<conf> ru_cf =* r_it;
+            std::shared_ptr<conf> ru_cf =* r_it;
 
-            address addr(*ru_cf);
+            cidr cidr(*ru_cf);
 
             if (x_cf = ru_cf->find("iface")) {
-                pr->add_rule(addr, iface::open_ifd(*x_cf));
+                pr->add_rule(cidr, iface::open(*x_cf));
             } else if (ru_cf->find("auto")) {
-                pr->add_rule(addr, true);
+                pr->add_rule(cidr, true);
             } else {
-                pr->add_rule(addr, false);
+                pr->add_rule(cidr, false);
             }
         }
     }
@@ -202,6 +205,11 @@ static void exit_ndppd(int sig)
 
 int main(int argc, char* argv[], char* env[])
 {
+    cidr c("::1/32");
+    logger::error() << c;
+    return 0;
+
+
     signal(SIGINT, exit_ndppd);
     signal(SIGTERM, exit_ndppd);
 
@@ -257,8 +265,8 @@ int main(int argc, char* argv[], char* env[])
 
     // Load configuration.
 
-    ptr<conf> cf = load_config(config_path);
-    if (cf.is_null())
+    std::shared_ptr<conf> cf = load_config(config_path);
+    if (!cf)
         return -1;
 
     if (daemon) {
