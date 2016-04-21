@@ -21,37 +21,17 @@
 
 #include "ndppd.h"
 #include "address.h"
-#include "iface.h"
+#include "cidr.h"
 
 NDPPD_NS_BEGIN
 
-typedef iface iface_T;
-
-class route {
-    static std::string token(const char *str);
-
-    static std::list<std::shared_ptr<route> > _routes;
-
-    static int _ttl;
-
-    static int _c_ttl;
-
-    address _addr;
-
-    std::string _ifname;
-
-    std::shared_ptr<iface_T> _iface;
-
-    static size_t hexdec(const char *str, unsigned char *buf, size_t size);
-
-    route(const address &address, const std::string &ifname);
-public:
-    static std::shared_ptr<route> create(const address &addr,
+struct route {
+    std::shared_ptr<route> create(const cidr_s &cidr,
         const std::string &ifname);
 
-    static std::shared_ptr<route> find(const address &addr);
+    static std::shared_ptr<route> find(const address_s &addr);
 
-    static std::shared_ptr<iface_T> find_and_open(const address &addr);
+    static std::shared_ptr<iface_s> find_and_open(const address_s &addr);
 
     static void load(const std::string &path);
 
@@ -63,9 +43,28 @@ public:
 
     const std::string &ifname() const;
 
-    const address &addr() const;
+    const cidr_s &cidr() const;
 
-    std::shared_ptr<iface_T> iface();
+    std::shared_ptr<iface_s> iface();
+
+private:
+    static std::string token(const char *str);
+
+    static std::list<std::shared_ptr<route> > _routes;
+
+    static int _ttl;
+
+    static int _c_ttl;
+
+    cidr_s _cidr;
+
+    std::string _ifname;
+
+    std::shared_ptr<iface_s> _iface;
+
+    static size_t hexdec(const char *str, unsigned char *buf, size_t size);
+
+    route();
 };
 
 NDPPD_NS_END

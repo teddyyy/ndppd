@@ -32,6 +32,9 @@
 #include "route.h"
 
 #include "cidr.h"
+#include "proxy.h"
+#include "iface.h"
+#include "session.h"
 #include "conf.h"
 
 using namespace ndppd;
@@ -152,26 +155,26 @@ static bool configure(std::shared_ptr<conf>& cf)
             return false;
         }
 
-        std::shared_ptr<proxy> pr = proxy::open(*pr_cf);
+        auto proxy = proxy::create(*pr_cf);
 
-        if (!pr) {
+        if (!proxy) {
             return false;
         }
 
         if (!(x_cf = pr_cf->find("router")))
-            pr->router(true);
+            proxy->router(true);
         else
-            pr->router(*x_cf);
+            proxy->router(*x_cf);
 
         if (!(x_cf = pr_cf->find("ttl")))
-            pr->ttl(30000);
+            proxy->ttl(30000);
         else
-            pr->ttl(*x_cf);
+            proxy->ttl(*x_cf);
 
         if (!(x_cf = pr_cf->find("timeout")))
-            pr->timeout(500);
+            proxy->timeout(500);
         else
-            pr->timeout(*x_cf);
+            proxy->timeout(*x_cf);
 
         std::vector<std::shared_ptr<conf> >::const_iterator r_it;
 
@@ -183,11 +186,11 @@ static bool configure(std::shared_ptr<conf>& cf)
             cidr cidr(*ru_cf);
 
             if (x_cf = ru_cf->find("iface")) {
-                pr->add_rule(cidr, iface::open(*x_cf));
+                proxy->add_rule(cidr, iface::open(*x_cf));
             } else if (ru_cf->find("auto")) {
-                pr->add_rule(cidr, true);
+                proxy->add_rule(cidr, true);
             } else {
-                pr->add_rule(cidr, false);
+                proxy->add_rule(cidr, false);
             }
         }
     }
@@ -205,8 +208,11 @@ static void exit_ndppd(int sig)
 
 int main(int argc, char* argv[], char* env[])
 {
+    logger::verbosity(7);
+    auto iface = iface::open("ens3");
+
     cidr c("::1/32");
-    logger::error() << c;
+    logger::debug() << c;
     return 0;
 
 

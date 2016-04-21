@@ -47,16 +47,18 @@ NDPPD_NS_BEGIN
 std::map<std::string, std::weak_ptr<iface> > iface::_map;
 std::vector<struct pollfd> iface::_pollfds;
 
-iface::iface()
+iface::iface() :
+    _fd(-1)
 {
+    logger::debug() << "iface::iface()";
 }
 
 iface::~iface()
 {
     logger::debug() << "iface::~iface()";
     // TODO: Restore ALLMULTI flag.
-    close(_fd);
-    _map_dirty = true;
+    if (_fd >= 0)
+        close(_fd);
 }
 
 std::shared_ptr<iface> iface::open(const std::string& name)
@@ -65,12 +67,13 @@ std::shared_ptr<iface> iface::open(const std::string& name)
     if (it != _map.end() && !it->second.expired())
         return it->second.lock();
 
-    int fd = 0;
+    // http://stackoverflow.com/questions/8147027
+    struct make_shared_class : public iface {};
+    std::shared_ptr<iface> iface(std::make_shared<make_shared_class>());
 
     // Create a socket.
-    if ((fd = socket(PF_PACKET, SOCK_DGRAM, htons(ETH_P_IPV6))) < 0)
-        throw std::system_error(errno, std::system_category(),
-            "socket() failed");
+    if ((iface->_fd = socket(PF_PACKET, SOCK_DGRAM, htons(ETH_P_IPV6))) < 0)
+        throw_system_error("could not create socket");
 
     // Bind to the specified interface.
     {
@@ -80,40 +83,28 @@ std::shared_ptr<iface> iface::open(const std::string& name)
         lladdr.sll_family   = AF_PACKET;
         lladdr.sll_protocol = htons(ETH_P_IPV6);
 
-        if (!(lladdr.sll_ifindex = if_nametoindex(name.c_str()))) {
-            close(fd);
-            logger::error() << "Failed to bind to interface '" << name << "'";
-            return nullptr;
-        }
+        if (!(lladdr.sll_ifindex = if_nametoindex(name.c_str())))
+            throw_system_error("invalid interface");
 
-        if (bind(fd, (struct sockaddr *)&lladdr, sizeof(struct sockaddr_ll)) < 0) {
-            close(fd);
-            logger::error() << "Failed to bind to interface '" << name << "'";
-            return nullptr;
-        }
+        if (bind(iface->_fd, (struct sockaddr *)&lladdr,
+                sizeof(struct sockaddr_ll)) < 0)
+            throw_system_error("failed to bind to interface");
     }
 
     // Detect the link-layer address.
     {
         struct ifreq ifr;
         strcpy(ifr.ifr_name, name.c_str());
-        if (ioctl(fd, SIOCGIFHWADDR, &ifr) < 0)
-        {
-            close(fd);
-            logger::error() << "SIOCGIFHWADDR failed";
-            return nullptr;
-        }
+        if (ioctl(iface->_fd, SIOCGIFHWADDR, &ifr) < 0)
+            throw_system_error("failed to determine link-layer address");
     }
 
     // Switch to non-blocking mode.
     {
         int on = 1;
 
-        if (ioctl(fd, FIONBIO, (char *)&on) < 0) {
-            close(fd);
-            logger::error() << "Failed to switch to non-blocking on interface '" << name << "'";
-            return nullptr;
-        }
+        if (ioctl(iface->_fd, FIONBIO, (char *)&on) < 0)
+            throw_system_error("failed to set non-blocking mode");
     }
 
     // Set up the filter.
@@ -149,25 +140,19 @@ std::shared_ptr<iface> iface::open(const std::string& name)
             filter
         };
 
-        if (setsockopt(fd, SOL_SOCKET, SO_ATTACH_FILTER, &fprog,
-                sizeof(fprog)) < 0) {
-            logger::error() << "Failed to set filter";
-            return nullptr;
-        }
+        if (setsockopt(iface->_fd, SOL_SOCKET, SO_ATTACH_FILTER, &fprog,
+                sizeof(fprog)) < 0)
+            throw_system_error("failed to set up filter");
     }
 
-    // http://stackoverflow.com/questions/8147027
-    struct make_shared_class : public iface {};
-    std::shared_ptr<iface> iface(std::make_shared<make_shared_class>());
-    iface->_fd = fd;
     return iface;
 }
 
-ssize_t iface::read(address &saddr, packet &packet)
+ssize_t iface::read(address_s &saddr, packet_s &packet)
 {
 
     struct iovec iov;
-    iov.iov_len = sizeof(packet);
+    iov.iov_len = sizeof(packet_s);
     iov.iov_base = (caddr_t)&packet;
 
     struct sockaddr_in6 sin6;
@@ -192,9 +177,8 @@ ssize_t iface::read(address &saddr, packet &packet)
     return len;
 }
 
-ssize_t iface::write(const address &daddr, const packet &packet)
+ssize_t iface::write(const address_s &daddr, const packet_s &packet)
 {
-
     struct sockaddr_in6 sin6;
     memset(&sin6, 0, sizeof(struct sockaddr_in6));
     sin6.sin6_family = AF_INET6;

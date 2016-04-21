@@ -30,21 +30,39 @@
 
 NDPPD_NS_BEGIN
 
-class iface {
-    static std::map<std::string, std::weak_ptr<iface> > _map;
+struct iface : std::enable_shared_from_this<iface> {
+    ~iface();
 
-    static bool _map_dirty;
+    static void fixup();
+
+    static std::shared_ptr<iface> open(const std::string &name);
+
+    static int poll_all();
+
+    ssize_t read(address_s &address, packet_s &packet);
+
+    ssize_t write(const address_s &address, const packet_s &packet);
+
+    // Returns the name of the interface.
+    const std::string& name() const;
+
+    // Adds a session to be monitored for ND_NEIGHBOR_ADVERT messages.
+    void add_session(const std::shared_ptr<session> &session);
+
+    void remove_session(const std::shared_ptr<session> &session);
+
+    void proxy(const std::shared_ptr<ndppd::proxy> &proxy);
+
+    std::shared_ptr<ndppd::proxy> proxy() const;
+
+private:
+    static std::map<std::string, std::weak_ptr<iface> > _map;
 
     // An array of objects used with ::poll.
     static std::vector<struct pollfd> _pollfds;
 
-    // Updates the array above.
-    static void fixup_pollfds();
-
-    static void cleanup();
-
     // The "generic" ICMPv6 socket for reading/writing NB_NEIGHBOR_ADVERT
-    // messages as well as writing NB_NEIGHBOR_SOLICIT messages.
+    // and NB_NEIGHBOR_SOLICIT messages.
     int _fd;
 
     // Previous state of ALLMULTI for the interface.
@@ -70,30 +88,6 @@ class iface {
 
     // Constructor.
     iface();
-public:
-    ~iface();
-
-    static void fixup();
-
-    static std::shared_ptr<iface> open(const std::string &name);
-
-    static int poll_all();
-
-    ssize_t read(address &address, packet &packet);
-
-    ssize_t write(const address &address, const packet &packet);
-
-    // Returns the name of the interface.
-    const std::string& name() const;
-
-    // Adds a session to be monitored for ND_NEIGHBOR_ADVERT messages.
-    void add_session(const std::shared_ptr<session> &session);
-
-    void remove_session(const std::shared_ptr<session> &session);
-
-    void proxy(const std::shared_ptr<ndppd::proxy> &proxy);
-
-    std::shared_ptr<ndppd::proxy> proxy() const;
 };
 
 NDPPD_NS_END

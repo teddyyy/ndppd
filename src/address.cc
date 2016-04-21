@@ -25,7 +25,6 @@
 #include <netinet/ip6.h>
 #include <arpa/inet.h>
 
-#include "ndppd.h"
 #include "address.h"
 
 NDPPD_NS_BEGIN

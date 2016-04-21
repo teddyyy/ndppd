@@ -26,7 +26,7 @@ NDPPD_NS_BEGIN
 class proxy;
 class iface;
 
-struct session {
+struct session : std::enable_shared_from_this<session_s> {
     enum class status_enum {
         WAITING, VALID, INVALID
     };

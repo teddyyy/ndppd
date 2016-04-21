@@ -28,26 +28,27 @@ std::list<std::weak_ptr<session> > session::_sessions;
 void session::update_all(int elapsed_time)
 {
     for (auto it = _sessions.begin(); it != _sessions.end(); ) {
-        if (!*it) {
+        if (it->expired()) {
             _sessions.erase(it++);
             continue;
         }
 
-        auto session = *it++;
+        auto session = (it++)->lock();
 
         if ((session->_ttl -= elapsed_time) >= 0) {
             continue;
         }
 
-        switch (seession->_status) {
-        case session::WAITING:
+        switch (session->_status) {
+        case session::status_enum::WAITING:
             logger::debug() << "session is now invalid";
-            session->_status = session::INVALID;
-            session->_ttl    = sssione->_proxy->ttl();
+            session->_status = session::status_enum::INVALID;
+            // TODO: _proxy could be expired()
+            session->_ttl    = session->_proxy.lock()->ttl();
             break;
 
         default:
-            seession->_proxy->remove_session(se);
+            session->_proxy.lock()->remove_session(session);
         }
     }
 }
@@ -57,10 +58,9 @@ session::~session()
     logger::debug()
         << "session::~session() this=" << logger::format("%x", this);
 
-    for (std::list<std::shared_ptr<iface> >::iterator it = _ifaces.begin();
-            it != _ifaces.end(); it++) {
-        (*it)->remove_session(_ptr);
-    }
+    /*for (auto it = _ifaces.begin(); it != _ifaces.end(); it++)
+        (*it)->remove_session(shared_from_this());*/
+    
 }
 
 std::shared_ptr<session_s> session::create(
@@ -78,9 +78,9 @@ std::shared_ptr<session_s> session::create(
     _sessions.push_back(session);
 
     logger::debug()
-        << "session::create() pr=" << logger::format("%x", (proxy *)proxy)
+        << "session::create() proxy=xx " 
         << ", saddr=" << saddr << ", daddr=" << daddr << ", taddr=" << taddr
-        << " =" << logger::format("%x", (session *)session);
+        << " =" << logger::format("%x", session.get());
 
     return session;
 }
@@ -102,19 +102,19 @@ void session::send_solicit()
 
     for (auto it = _ifaces.begin(); it != _ifaces.end(); it++) {
         logger::debug() << " - " << (*it)->name();
-        (*it)->write_solicit(_taddr);
+        //(*it)->write_solicit(_taddr);
     }
 }
 
 void session::send_advert()
 {
-    _proxy->iface()->write_advert(_saddr, _taddr, _proxy->router());
+    //_proxy->iface()->write_advert(_saddr, _taddr, _proxy->router());
 }
 
 void session::handle_advert()
 {
-    _status = VALID;
-    _ttl    = _proxy->ttl();
+    _status = status_enum::VALID;
+    _ttl    = _proxy.lock()->ttl();
 
     send_advert();
 }
@@ -134,12 +134,12 @@ const address& session::daddr() const
     return _daddr;
 }
 
-int session::status() const
+session::status_enum session::status() const
 {
     return _status;
 }
 
-void session::status(int val)
+void session::status(session::status_enum val)
 {
     _status = val;
 }

@@ -22,8 +22,8 @@
 
 NDPPD_NS_BEGIN
 
-class address {
-    address();
+struct address {
+    address() {}
     address(const address &addr);
     address(const std::string &str);
     address(const char *str);

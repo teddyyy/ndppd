@@ -20,20 +20,28 @@
 
 #define NDPPD_VERSION   "0.2.4"
 
+#include <cerrno>
 #include <assert.h>
 
 #include "logger.h"
 
-NDPPD_NS_BEGIN
-typedef struct proxy    proxy_s;
-typedef struct iface    iface_s;
-typedef struct cidr     cidr_s;
-typedef struct address  address_s;
-typedef struct session  session_s;
-typedef struct rule     rule_s;
+namespace ndppd
+{
+    inline std::exception throw_system_error(const std::string &what)
+    {
+        throw std::system_error(errno, std::system_category(), what);
+    }
 
-NDPPD_NS_END
-
+    typedef struct proxy    proxy_s;
+    typedef struct iface    iface_s;
+    typedef struct cidr     cidr_s;
+    typedef struct address  address_s;
+    typedef struct session  session_s;
+    typedef struct rule     rule_s;
+    typedef struct conf     conf_s;
+    typedef struct route    route_s;
+    typedef struct packet   packet_s;
+}
 
 /*#include "conf.h"
 #include "address.h"

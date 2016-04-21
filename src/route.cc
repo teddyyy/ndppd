@@ -20,16 +20,17 @@
 #include "ndppd.h"
 #include "route.h"
 
+#include "iface.h"
+
 NDPPD_NS_BEGIN
 
-std::list<ptr<route> > route::_routes;
+std::list<std::shared_ptr<route> > route::_routes;
 
 int route::_ttl;
 
 int route::_c_ttl;
 
-route::route(const address& addr, const std::string& ifname) :
-    _addr(addr), _ifname(ifname)
+route::route()
 {
 }
 
@@ -99,16 +100,16 @@ void route::load(const std::string& path)
                 continue;
             }
 
-            address addr;
+            /*address addr;
 
             unsigned char pfx;
 
-            if (hexdec(buf, (unsigned char* )&addr.addr(), 16) != 16) {
+            if (hexdec(buf, (unsigned char *)&addr.addr(), 16) != 16) {
                 // TODO: Warn here?
                 continue;
             }
 
-            if (hexdec(buf + 33,& pfx, 1) != 1) {
+            if (hexdec(buf + 33, &pfx, 1) != 1) {
                 // TODO: Warn here?
                 continue;
             }
@@ -116,6 +117,7 @@ void route::load(const std::string& path)
             addr.prefix((int)pfx);
 
             route::create(addr, token(buf + 141));
+*/
         }
     } catch (std::ifstream::failure e) {
         logger::warning() << "Failed to parse IPv6 routing data from '" << path << "'";
@@ -131,34 +133,40 @@ void route::update(int elapsed_time)
     }
 }
 
-ptr<route> route::create(const address& addr, const std::string& ifname)
+std::shared_ptr<route> route::create(const cidr_s &cidr,
+    const std::string& ifname)
 {
-    ptr<route> rt(new route(addr, ifname));
+    // http://stackoverflow.com/questions/8147027
+    struct make_shared_class : public route {};
+    auto route = std::make_shared<make_shared_class>();
+
+    route->_cidr = cidr;
+    route->_ifname = ifname;
+
     // logger::debug() << "route::create() addr=" << addr << ", ifname=" << ifname;
-    _routes.push_back(rt);
-    return rt;
+    _routes.push_back(route);
+    return route;
 }
 
-ptr<route> route::find(const address& addr)
+std::shared_ptr<route> route::find(const address_s &address)
 {
-    for (std::list<ptr<route> >::iterator it = _routes.begin();
-            it != _routes.end(); it++) {
-        if ((*it)->addr() == addr)
+    for (auto it = _routes.begin(); it != _routes.end(); it++) {
+        if ((*it)->cidr().contains(address))
             return *it;
     }
 
-    return ptr<route>();
+    return std::shared_ptr<route>();
 }
 
-ptr<iface> route::find_and_open(const address& addr)
+std::shared_ptr<iface> route::find_and_open(const address_s &address)
 {
-    ptr<route> rt;
+    std::shared_ptr<route> route;
 
-    if (rt = find(addr)) {
-        return rt->ifa();
+    if (route = find(address)) {
+        return route->iface();
     }
 
-    return ptr<iface>();
+    return nullptr;
 }
 
 const std::string& route::ifname() const
@@ -166,19 +174,19 @@ const std::string& route::ifname() const
     return _ifname;
 }
 
-ptr<iface> route::ifa()
+std::shared_ptr<iface_s> route::iface()
 {
-    if (!_ifa) {
+    if (!_iface) {
         logger::debug() << "router::ifa() opening interface '" << _ifname << "'";
-        return _ifa = iface::open_ifd(_ifname);
+        return _iface = iface_s::open(_ifname);
     }
 
-    return ptr<iface>();
+    return nullptr;
 }
 
-const address& route::addr() const
+const cidr_s &route::cidr() const
 {
-    return _addr;
+    return _cidr;
 }
 
 int route::ttl()
