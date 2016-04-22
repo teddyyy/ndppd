@@ -26,22 +26,24 @@
 #include "ndppd.h"
 #include "proxy.h"
 #include "packet.h"
-#include "ip6addr.h"
+#include "in6addr.h"
 
 NDPPD_NS_BEGIN
 
 struct iface : std::enable_shared_from_this<iface> {
     ~iface();
 
-    static void fixup();
+    // Creates the PF_PACKET socket.
+    static void create_socket();
+
+    static void cleanup();
 
     static std::shared_ptr<iface> open(const std::string &name);
 
-    static int poll_all();
+    static bool poll();
+    static bool read(in6addr_s &in6addr, packet_s &packet);
 
-    ssize_t read(ip6addr_s &ip6addr, packet_s &packet);
-
-    ssize_t write(const packet_s &packet);
+    bool write(const packet_s &packet, const lladdr_s &addr);
 
     // Returns the name of the interface.
     const std::string& name() const;
@@ -56,14 +58,14 @@ struct iface : std::enable_shared_from_this<iface> {
     std::shared_ptr<ndppd::proxy> proxy() const;
 
 private:
-    static std::map<std::string, std::weak_ptr<iface> > _map;
+    static std::vector<std::weak_ptr<iface> > _ifaces;
 
     // An array of objects used with ::poll.
     static std::vector<struct pollfd> _pollfds;
 
     // The "generic" ICMPv6 socket for reading/writing NB_NEIGHBOR_ADVERT
     // and NB_NEIGHBOR_SOLICIT messages.
-    int _fd;
+    static int _fd;
 
     // Interface index, as reported by if_nametoindex().
     int _index;
@@ -80,7 +82,7 @@ private:
 
     std::weak_ptr<ndppd::proxy> _proxy;
 
-    // The link-layer ip6addr of this interface.
+    // The link-layer in6addr of this interface.
     struct ether_addr _hwaddr;
 
     // Turns on/off ALLMULTI for this interface - returns the previous state

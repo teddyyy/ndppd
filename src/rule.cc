@@ -57,9 +57,9 @@ bool rule::is_auto() const
     return _auto;
 }
 
-bool rule::check(const ip6addr_s &ip6addr) const
+bool rule::check(const in6addr_s &in6addr) const
 {
-    return _cidr.contains(ip6addr);
+    return _cidr.contains(in6addr);
 }
 
 NDPPD_NS_END

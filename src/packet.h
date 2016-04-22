@@ -41,9 +41,9 @@ class packet {
     void update_icmp6_checksum();
 
 public:
-    void make_solicit_packet();
+    void make_solicit_packet(const lladdr &laddr, const in6addr &taddr);
 
-    const ip6addr_s &c_daddr() const;
+    const in6addr_s &c_daddr() const;
 
     int type() const;
     size_t length() const;

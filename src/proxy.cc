@@ -51,15 +51,15 @@ std::shared_ptr<proxy_s> proxy::create(const std::string &ifname)
     return create(iface::open(ifname));
 }
 
-void proxy::handle_solicit(const ip6addr_s &saddr, const ip6addr_s &daddr,
-    const ip6addr_s &taddr)
+void proxy::handle_solicit(const in6addr_s &saddr, const in6addr_s &daddr,
+    const in6addr_s &taddr)
 {
     logger::debug()
         << "proxy::handle_solicit() saddr=" << saddr.to_string()
         << ", taddr=" << taddr.to_string();
 
     // Let's check this proxy's list of sessions to see if we can
-    // find one with the same target ip6addr.
+    // find one with the same target in6addr.
 
     for (auto sit = _sessions.begin(); sit != _sessions.end(); sit++) {
         if ((*sit)->taddr() == taddr) {

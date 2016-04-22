@@ -29,9 +29,12 @@
 
 NDPPD_NS_BEGIN
 
-lladdr::lladdr(const uint8_t *addr)
+std::string lladdr::to_string() const
 {
-    memcpy(_addr, addr, 6);
+    char buf[18];
+    sprintf(buf, "%02x:%02x:%02x:%02x:%02x:%02x",
+        _v[0], _v[1], _v[2], _v[3], _v[4], _v[5]);
+    return buf;
 }
 
 NDPPD_NS_END

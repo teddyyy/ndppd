@@ -18,7 +18,7 @@
 
 #include "ndppd.h"
 #include "packet.h"
-#include "ip6addr.h"
+#include "in6addr.h"
 
 NDPPD_NS_BEGIN
 
@@ -87,9 +87,9 @@ nd_opt_hdr *packet::option(int type)
     }
 }
 
-const ip6addr_s &packet::c_daddr() const
+const in6addr_s &packet::c_daddr() const
 {
-    return *reinterpret_cast<const ip6addr_s *>(&c_ip6().ip6_dst);
+    return *reinterpret_cast<const in6addr_s *>(&c_ip6().ip6_dst);
 }
 
 int packet::type() const
@@ -139,24 +139,27 @@ void packet::ip_checksum_add(uint32_t &current, uint32_t value)
     ip_checksum_add(current, &value, sizeof(uint32_t));
 }
 
-void packet::make_solicit_packet()
+void packet::make_solicit_packet(const lladdr &laddr, const in6addr &taddr)
 {
+    static in6addr_s multicast_addr("ff02::1:ff00:0000");
+
     auto &ip6 = this->ip6();
     ip6.ip6_flow = htonl(6 << 28);
     ip6.ip6_plen = htons(sizeof(icmp6_hdr));
     ip6.ip6_hops = 255;
     ip6.ip6_nxt = IPPROTO_ICMPV6;
-    ip6.ip6_src = ip6addr_s();
-    ip6.ip6_dst = ip6addr_s("ff02::1:ff00:0000");
+    ip6.ip6_src = in6addr_s();
+    ip6.ip6_dst = in6addr_s("ff02::1:ff00:0000");
 
     auto &icmp6 = this->icmp6();
     icmp6.icmp6_type = ND_NEIGHBOR_SOLICIT;
     icmp6.icmp6_id = htons(1000); // getpid()
     icmp6.icmp6_seq = 0;
 
+    target() = taddr;
+
     update_icmp6_checksum();
 
-    target() = {};
 }
 
 

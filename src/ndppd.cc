@@ -93,7 +93,7 @@ static std::shared_ptr<conf> load_config(const std::string &path)
             std::shared_ptr<conf> ru_cf =* r_it;
 
             if (ru_cf->empty()) {
-                logger::error() << "'rule' is missing an IPv6 ip6addr/net";
+                logger::error() << "'rule' is missing an IPv6 in6addr/net";
                 return NULL;
             }
 
@@ -211,9 +211,11 @@ int main(int argc, char* argv[], char* env[])
     logger::verbosity(7);
     auto iface = iface::open("ens3");
 
+    logger::error() << in6addr_s("1:2:3:4:5:6:7:8").to_ns_multicast();
+
     packet p;
-    p.make_solicit_packet();
-    iface->write(p);
+    //p.make_solicit_packet();
+    //iface->write(p);
     return 0;
 
 

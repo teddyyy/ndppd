@@ -1,5 +1,5 @@
 // ndppd - NDP Proxy Daemon
-// Copyright (C) 2011  Daniel Adolfsson <daniel@priv.nu>
+// Copyright (C) 2011-2016  Daniel Adolfsson <daniel@priv.nu>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -38,6 +38,7 @@
 #include <vector>
 #include <map>
 #include <memory>
+#include <algorithm>
 
 #include "ndppd.h"
 #include "iface.h"
@@ -45,137 +46,126 @@
 
 NDPPD_NS_BEGIN
 
-std::map<std::string, std::weak_ptr<iface> > iface::_map;
-std::vector<struct pollfd> iface::_pollfds;
+int iface::_fd;
+std::vector<std::weak_ptr<iface> > iface::_ifaces;
+std::vector<pollfd> iface::_pollfds;
 
-iface::iface() :
-    _fd(-1)
+iface::iface()
 {
-    logger::debug() << "iface::iface()";
 }
 
 iface::~iface()
 {
     logger::debug() << "iface::~iface()";
-    // TODO: Restore ALLMULTI flag.
-    if (_fd >= 0)
-        close(_fd);
+    // TODO: Remove ALLMULTI membership.
+}
+
+void iface::create_socket()
+{
+    // Create a socket.
+    if ((_fd = socket(PF_PACKET, SOCK_DGRAM, htons(ETH_P_IPV6))) < 0)
+        throw_system_error("could not create socket");
+
+    // Add a filter.
+    static sock_filter filter[] = {
+        // Load the IPv6 protocol type.
+        BPF_STMT(BPF_LD | BPF_B | BPF_ABS, offsetof(ip6_hdr, ip6_nxt)),
+
+        // Drop packet if ip6_nxt is not IPPROTO_ICMPV6.
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, IPPROTO_ICMPV6, 0, 3),
+
+        // Load the ICMPv6 type.
+        BPF_STMT(BPF_LD | BPF_B | BPF_ABS,
+            sizeof(ip6_hdr) + offsetof(icmp6_hdr, icmp6_type)),
+
+        // Keep packet if icmp6_type is ND_NEIGHBOR_ADVERT.
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, ND_NEIGHBOR_ADVERT, 2, 0),
+
+        // Keep packet if icmp6_type is ND_NEIGHBOR_SOLICIT.
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, ND_NEIGHBOR_SOLICIT, 1, 0),
+
+        // Drop packet.
+        BPF_STMT(BPF_RET | BPF_K, 0),
+
+        // Keep packet.
+        BPF_STMT(BPF_RET | BPF_K, (u_int32_t)-1)
+    };
+
+    static sock_fprog fprog = {
+        7,
+        filter
+    };
+
+    if (setsockopt(_fd, SOL_SOCKET, SO_ATTACH_FILTER, &fprog,
+            sizeof(fprog)) < 0)
+        throw_system_error("failed to set up filter");
+
+    // Switch to non-blocking I/O.
+    int on = 1;
+    if (ioctl(_fd, FIONBIO, (char *)&on) < 0)
+        throw_system_error("failed to set non-blocking mode");
 }
 
 std::shared_ptr<iface> iface::open(const std::string &name)
 {
-    auto it = _map.find(name);
-    if (it != _map.end() && !it->second.expired())
-        return it->second.lock();
+    // Find an interface with the specified name.
+    auto it = std::find_if(_ifaces.begin(), _ifaces.end(),
+        [&name](std::weak_ptr<iface> &p) {
+            return !p.expired() && p.lock()->_name == name;
+        });
 
-    // http://stackoverflow.com/questions/8147027
-    struct make_shared_class : public iface {};
-    std::shared_ptr<iface> iface(std::make_shared<make_shared_class>());
+    if (it != _ifaces.end())
+        // This should never return nullptr.
+        return it->lock();
 
-    iface->_name = name;
-
-    // Create a socket.
-    if ((iface->_fd = socket(PF_PACKET, SOCK_DGRAM, htons(ETH_P_IPV6))) < 0)
-        throw_system_error("could not create socket");
+    int index;
 
     // Get the index of the interface.
-    if (!(iface->_index = if_nametoindex(name.c_str())))
+    if (!(index = if_nametoindex(name.c_str())))
         throw_system_error("invalid interface");
 
-    // Detect the link-layer ip6addr.
-    {
-        struct ifreq ifr;
-        strcpy(ifr.ifr_name, name.c_str());
-        if (ioctl(iface->_fd, SIOCGIFHWADDR, &ifr) < 0)
-            throw_system_error("failed to determine link-layer ip6addr");
-    }
+    // Detect the link-layer address.
+    struct ifreq ifr;
+    strcpy(ifr.ifr_name, name.c_str());
+    if (ioctl(_fd, SIOCGIFHWADDR, &ifr) < 0)
+        throw_system_error("failed to determine link-layer in6addr");
 
-    // Switch to non-blocking mode.
-    {
-        int on = 1;
-        if (ioctl(iface->_fd, FIONBIO, (char *)&on) < 0)
-            throw_system_error("failed to set non-blocking mode");
-    }
+    // TODO: Add ALLMULTI membership.
 
-    // Set up the filter.
-    {
-        static struct sock_filter filter[] = {
-            // Load the IPv6 protocol type.
-            BPF_STMT(BPF_LD | BPF_B | BPF_ABS,
-                offsetof(struct ip6_hdr, ip6_nxt)),
-
-            // Drop packet if ip6_nxt is not IPPROTO_ICMPV6.
-            BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, IPPROTO_ICMPV6, 0, 4),
-
-            // Load the ICMPv6 type.
-            BPF_STMT(BPF_LD | BPF_B | BPF_ABS,
-                sizeof(struct ip6_hdr) +
-                offsetof(struct icmp6_hdr, icmp6_type)),
-
-            // Keep packet if icmp6_type is ND_NEIGHBOR_ADVERT.
-            BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, ND_NEIGHBOR_ADVERT, 2, 0),
-
-            // Keep packet if icmp6_type is ND_NEIGHBOR_SOLICIT.
-            BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, ND_NEIGHBOR_SOLICIT, 1, 0),
-
-            // Drop packet.
-            BPF_STMT(BPF_RET | BPF_K, 0),
-
-            // Keep packet.
-            BPF_STMT(BPF_RET | BPF_K, (u_int32_t)-1)
-        };
-
-        static struct sock_fprog fprog = {
-            7,
-            filter
-        };
-
-        if (setsockopt(iface->_fd, SOL_SOCKET, SO_ATTACH_FILTER, &fprog,
-                sizeof(fprog)) < 0)
-            throw_system_error("failed to set up filter");
-    }
+    // http://stackoverflow.com/questions/8147026
+    struct make_shared_class : public iface {};
+    std::shared_ptr<iface> iface(std::make_shared<make_shared_class>());
+    iface->_name  = name;
+    iface->_index = index;
 
     return iface;
 }
 
-ssize_t iface::read(ip6addr_s &saddr, packet_s &packet)
+bool iface::read(in6addr_s &saddr, packet_s &packet)
 {
-
-    struct iovec iov;
-    iov.iov_len = sizeof(packet_s);
-    iov.iov_base = (caddr_t)&packet;
-
-    struct sockaddr_in6 sin6;
-
-    struct msghdr mhdr;
-    memset(&mhdr, 0, sizeof(struct msghdr));
-    mhdr.msg_name = (caddr_t)&sin6;
-    mhdr.msg_namelen = sizeof(struct sockaddr_in6);
-    mhdr.msg_iov = &iov;
-    mhdr.msg_iovlen = 1;
+    sockaddr_ll from;
 
     ssize_t len;
-    if ((len = ::recvmsg(_fd, &mhdr, 0)) < 0)
-        return -1;
-
-    if (len < sizeof(struct ip6_hdr) + sizeof(struct icmp6_hdr))
-        return -1;
+    socklen_t from_size = sizeof(sockaddr_ll);
+    if ((len = recvfrom(_fd, &packet, sizeof(packet_s), 0,
+            reinterpret_cast<sockaddr *>(&from), &from_size)) < 0)
+        throw_system_error("recvfrom() failed");
 
     logger::debug() << "iface::read() len=" << len;
 
-    saddr = sin6.sin6_addr;
-    return len;
+    if (len < sizeof(ip6_hdr))
+        return false;
+
+    return true;
 }
 
-ssize_t iface::write(const packet_s &packet, const lladdr_s &addr)
+bool iface::write(const packet_s &packet, const lladdr_s &addr)
 {
     ssize_t len;
 
     struct sockaddr_ll sll;
     memset(&sll, 0, sizeof(sll));
     sll.sll_family = AF_PACKET;
-
-
 
     memset(&sll.sll_addr, 0xff, ETH_ALEN);
     if (packet.c_daddr().is_multicast()) {
@@ -197,7 +187,7 @@ ssize_t iface::write(const packet_s &packet, const lladdr_s &addr)
     //if ((len = ::sendmsg(_fd, &mhdr, 0)) < 0)
     //    throw_system_error("sendmsg() failed");
 
-    return len;
+    return true;
 }
 
 void iface::add_session(const std::shared_ptr<session> &session)
@@ -205,121 +195,37 @@ void iface::add_session(const std::shared_ptr<session> &session)
     _sessions.push_back(session);
 }
 
-void iface::fixup()
+void iface::cleanup()
 {
-    logger::debug() << "iface::fixup() _map.size()=" << _map.size();
+    logger::debug() << "iface::fixup() _ifaces.size()=" << _ifaces.size();
 
-    bool dirty = _map.size() != _pollfds.size();
-
-    for (auto it = _map.begin(); it != _map.end(); ) {
-        if (it->second.expired()) {
-            it = _map.erase(it);
-            dirty = dirty | true;
-        } else
+    for (auto it = _ifaces.begin(); it != _ifaces.end(); ) {
+        if (it->expired())
+            it = _ifaces.erase(it);
+        else
             it++;
     }
-
-    if (!dirty)
-        return;
-
-    _pollfds.resize(_map.size());
-
-    int i = 0;
-    for (auto it = _map.begin(); it != _map.end(); it++) {
-        _pollfds[i++] = {
-            // No need to check for null here; it's been handled above.
-            .fd      = it->second.lock()->_fd,
-            .events  = POLLIN,
-            .revents = 0
-        };
-    }
 }
 
-int iface::poll_all()
+bool iface::poll()
 {
-    fixup();
+    pollfd pfd;
+    pfd.fd = _fd;
+    pfd.events = POLLIN;
 
-    if (_pollfds.size() == 0) {
-        ::sleep(1);
-        return 0;
-    }
+    int ret = ::poll(&pfd, 1, 100);
+    if (ret < 0)
+        throw_system_error("poll() failed");
 
-    int len;
-    if ((len = ::poll(&_pollfds[0], _pollfds.size(), 50)) < 0) {
-        return -1;
-    }
+    if (!ret)
+        return false;
 
-    if (len == 0) {
-        return 0;
-    }
-
-    std::map<std::string, std::weak_ptr<iface> >::iterator i_it = _map.begin();
-
-    int i = 0;
-
-    for (std::vector<struct pollfd>::iterator f_it = _pollfds.begin();
-            f_it != _pollfds.end(); f_it++) {
-
-        if (!(f_it->revents & POLLIN)) {
-            continue;
-        }
-
-        std::shared_ptr<iface> iface = i_it->second.lock();
-
-        ip6addr saddr, daddr, taddr;
-        packet packet;
-
-        if (iface->read(saddr, packet) < 0) {
-            logger::error() << "junk packet";
-            continue;
-        }
-
-    }
+    packet_s packet;
+    in6addr_s addr;
+    if (!read(addr, packet))
+        return false;
 
     return 0;
-}
-
-bool iface::allmulti()
-{
-    struct ifreq ifr;
-
-    memset(&ifr, 0, sizeof(ifr));
-    strncpy(ifr.ifr_name, _name.c_str(), IFNAMSIZ);
-
-    if (ioctl(_fd, SIOCGIFFLAGS, &ifr) < 0)
-        throw std::system_error(errno, std::system_category());
-
-    return !!(ifr.ifr_flags & IFF_ALLMULTI);
-}
-
-bool iface::allmulti(bool value)
-{
-    struct ifreq ifr;
-
-    logger::debug()
-        << "iface::allmulti() value="
-        << value << ", _name=\"" << _name << "\"";
-
-    memset(&ifr, 0, sizeof(ifr));
-    strncpy(ifr.ifr_name, _name.c_str(), IFNAMSIZ);
-
-    if (ioctl(_fd, SIOCGIFFLAGS, &ifr) < 0) 
-        throw std::system_error(errno, std::system_category(),
-            "failed to get device flags");
-
-    if (!!(ifr.ifr_flags &IFF_ALLMULTI) == value)
-        return value;
-
-    if (value)
-        ifr.ifr_flags |= IFF_ALLMULTI;
-    else
-        ifr.ifr_flags &= ~IFF_ALLMULTI;
-
-    if (ioctl(_fd, SIOCSIFFLAGS, &ifr) < 0)
-        throw std::system_error(errno, std::system_category(),
-            "failed to set device flags");
-
-    return !value;
 }
 
 const std::string &iface::name() const

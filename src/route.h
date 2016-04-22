@@ -20,7 +20,7 @@
 #include <memory>
 
 #include "ndppd.h"
-#include "ip6addr.h"
+#include "in6addr.h"
 #include "cidr.h"
 
 NDPPD_NS_BEGIN
@@ -29,9 +29,9 @@ struct route {
     std::shared_ptr<route> create(const cidr_s &cidr,
         const std::string &ifname);
 
-    static std::shared_ptr<route> find(const ip6addr_s &addr);
+    static std::shared_ptr<route> find(const in6addr_s &addr);
 
-    static std::shared_ptr<iface_s> find_and_open(const ip6addr_s &addr);
+    static std::shared_ptr<iface_s> find_and_open(const in6addr_s &addr);
 
     static void load(const std::string &path);
 

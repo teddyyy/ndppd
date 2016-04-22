@@ -64,8 +64,8 @@ session::~session()
 }
 
 std::shared_ptr<session_s> session::create(
-    const std::shared_ptr<proxy_s> &proxy, const ip6addr_s &saddr,
-    const ip6addr_s &daddr, const ip6addr_s &taddr)
+    const std::shared_ptr<proxy_s> &proxy, const in6addr_s &saddr,
+    const in6addr_s &daddr, const in6addr_s &taddr)
 {
     // http://stackoverflow.com/questions/8147027
     struct make_shared_class : public session_s {};
@@ -119,17 +119,17 @@ void session::handle_advert()
     send_advert();
 }
 
-const ip6addr& session::taddr() const
+const in6addr& session::taddr() const
 {
     return _taddr;
 }
 
-const ip6addr& session::saddr() const
+const in6addr& session::saddr() const
 {
     return _saddr;
 }
 
-const ip6addr& session::daddr() const
+const in6addr& session::daddr() const
 {
     return _daddr;
 }

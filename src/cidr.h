@@ -19,7 +19,7 @@
 #include <netinet/ip6.h>
 
 #include "ndppd.h"
-#include "ip6addr.h"
+#include "in6addr.h"
 
 NDPPD_NS_BEGIN
 
@@ -36,15 +36,15 @@ public:
     cidr();
     cidr(const std::string &str);
     cidr(const char *str);
-    cidr(const ip6addr &addr, int prefix = 128);
+    cidr(const in6addr &addr, int prefix = 128);
 
-    const ip6addr &addr() const;
-    const ip6addr &mask() const;
+    const in6addr &addr() const;
+    const in6addr &mask() const;
 
     const std::string to_string() const;
 
-    // Returns true if the CIDR contains the specified ip6addr. */
-    bool contains(const ip6addr &ip6addr) const;
+    // Returns true if the CIDR contains the specified in6addr. */
+    bool contains(const in6addr &in6addr) const;
 
     // Returns the prefix length. */
     int prefix() const;

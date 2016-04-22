@@ -35,7 +35,7 @@ namespace ndppd
     typedef struct proxy    proxy_s;
     typedef struct iface    iface_s;
     typedef struct cidr     cidr_s;
-    typedef struct ip6addr  ip6addr_s;
+    typedef struct in6addr  in6addr_s;
     typedef struct lladdr   lladdr_s;
     typedef struct session  session_s;
     typedef struct rule     rule_s;
@@ -45,7 +45,7 @@ namespace ndppd
 }
 
 /*#include "conf.h"
-#include "ip6addr.h"
+#include "in6addr.h"
 
 #include "iface.h"
 #include "proxy.h"

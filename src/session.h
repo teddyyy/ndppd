@@ -19,7 +19,7 @@
 #include <list>
 
 #include "ndppd.h"
-#include "ip6addr.h"
+#include "in6addr.h"
 
 NDPPD_NS_BEGIN
 
@@ -37,16 +37,16 @@ struct session : std::enable_shared_from_this<session_s> {
     ~session();
 
     static std::shared_ptr<session> create(
-        const std::shared_ptr<proxy> &proxy, const ip6addr &saddr,
-        const ip6addr &daddr, const ip6addr &taddr);
+        const std::shared_ptr<proxy> &proxy, const in6addr &saddr,
+        const in6addr &daddr, const in6addr &taddr);
 
     void add_iface(const std::shared_ptr<iface> &iface);
 
-    const ip6addr &taddr() const;
+    const in6addr &taddr() const;
 
-    const ip6addr &daddr() const;
+    const in6addr &daddr() const;
 
-    const ip6addr &saddr() const;
+    const in6addr &saddr() const;
 
     status_enum status() const;
 
@@ -65,7 +65,7 @@ private:
 
     std::weak_ptr<proxy> _proxy;
 
-    ip6addr _saddr, _daddr, _taddr;
+    in6addr _saddr, _daddr, _taddr;
 
     // An array of interfaces this session is monitoring for ND_NEIGHBOR_ADVERT.
     std::list<std::shared_ptr<iface> > _ifaces;

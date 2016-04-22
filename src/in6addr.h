@@ -23,18 +23,18 @@
 
 NDPPD_NS_BEGIN
 
-struct ip6addr {
+struct in6addr {
     friend cidr_s;
 
-    ip6addr() {}
-    ip6addr(const ip6addr &addr);
-    ip6addr(const std::string &str);
-    ip6addr(const char *str);
-    ip6addr(const in6_addr &addr);
+    in6addr() {}
+    in6addr(const in6addr &addr);
+    in6addr(const std::string &str);
+    in6addr(const char *str);
+    //in6addr(const in6_addr &addr);
 
     // Compare _a/_m against a._a.
-    bool operator==(const ip6addr_s& addr) const;
-    bool operator!=(const ip6addr_s& addr) const;
+    bool operator==(const in6addr_s &addr) const;
+    bool operator!=(const in6addr_s &addr) const;
 
     const std::string to_string() const;
 
@@ -45,12 +45,17 @@ struct ip6addr {
     lladdr get_multicast_lladdr() const;
 
     operator std::string() const;
+
     operator const in6_addr &() const;
 
-//    operator struct in6_addr &() const;
+    // Returns a neighbor solicitation multicast address derived from this
+    // address.
+    in6addr to_ns_multicast();
+
+    lladdr to_ll_multicast();
 
 private:
-    uint32_t _addr[4];
+    uint32_t _v[4];
 };
 
 NDPPD_NS_END

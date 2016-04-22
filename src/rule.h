@@ -38,7 +38,7 @@ struct rule {
 
     bool is_auto() const;
 
-    bool check(const ip6addr &addr) const;
+    bool check(const in6addr &addr) const;
 
 private:
     std::weak_ptr<proxy_s> _proxy;

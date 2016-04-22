@@ -12,7 +12,7 @@ SBINDIR ?= ${DESTDIR}${PREFIX}/sbin
 
 LIBS     =
 
-OBJS     = src/logger.o src/ndppd.o src/iface.o src/proxy.o src/ip6addr.o \
+OBJS     = src/logger.o src/ndppd.o src/iface.o src/proxy.o src/in6addr.o \
            src/rule.o src/session.o src/conf.o src/route.o src/cidr.o \
            src/packet.o src/lladdr.o
 

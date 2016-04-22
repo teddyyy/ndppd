@@ -27,12 +27,12 @@ NDPPD_NS_BEGIN
 struct lladdr {
     lladdr() {}
 
-    lladdr(const uint8_t *addr);
+    std::string to_string() const;
 
     operator std::string() const;
 
 private:
-    uint8_t _addr[6];
+    uint8_t _v[6];
 };
 
 NDPPD_NS_END
