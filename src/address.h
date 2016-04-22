@@ -45,6 +45,7 @@ struct address {
     bool is_multicast() const;
 
     operator std::string() const;
+//    operator struct in6_addr &() const;
 
 private:
     uint32_t _addr[4];

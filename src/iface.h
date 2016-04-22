@@ -65,6 +65,9 @@ private:
     // and NB_NEIGHBOR_SOLICIT messages.
     int _fd;
 
+    // Interface index, as reported by if_nametoindex().
+    int _index;
+
     // Previous state of ALLMULTI for the interface.
     int _prev_allmulti;
 

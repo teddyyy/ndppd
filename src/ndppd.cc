@@ -211,6 +211,10 @@ int main(int argc, char* argv[], char* env[])
     logger::verbosity(7);
     auto iface = iface::open("ens3");
 
+    packet p;
+    p.make_solicit_packet();
+    iface->write("fd00::1", p);
+
     cidr c("::1/32");
     logger::debug() << c;
     return 0;

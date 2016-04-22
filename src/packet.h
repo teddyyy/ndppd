@@ -25,8 +25,10 @@ NDPPD_NS_BEGIN
 class packet {
     uint8_t _data[1024];
 
-    // A number of helper methods to access various parts of the packet.
+    void ip_checksum_add(uint32_t &current, uint32_t value);
+    void ip_checksum_add(uint32_t &current, const void *data, size_t len);
 
+    // A number of helper methods to access various parts of the packet.
     uint8_t *data();
     const uint8_t *c_data() const;
     struct ip6_hdr &ip6();
@@ -39,7 +41,7 @@ class packet {
     void update_icmp6_checksum();
 
 public:
-    static packet create_solicit_packet();
+    void make_solicit_packet();
 
     int type() const;
     size_t length() const;

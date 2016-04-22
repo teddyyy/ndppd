@@ -1,5 +1,5 @@
 // ndppd - NDP Proxy Daemon
-// Copyright (C) 2011  Daniel Adolfsson <daniel@priv.nu>
+// Copyright (C) 2011-2016  Daniel Adolfsson <daniel@priv.nu>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -94,5 +94,10 @@ bool address::is_unicast() const
 {
     return *reinterpret_cast<const uint8_t *>(this) != 0xff;
 }
+
+/*address::operator const struct in6_addr &() const
+{
+    return c_addr();
+}*/
 
 NDPPD_NS_END

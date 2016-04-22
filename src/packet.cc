@@ -18,6 +18,7 @@
 
 #include "ndppd.h"
 #include "packet.h"
+#include "address.h"
 
 NDPPD_NS_BEGIN
 
@@ -96,63 +97,64 @@ int packet::type() const
 
 size_t packet::length() const
 {
-    return sizeof(struct ip6_hdr) + ::ntohl(c_ip6().ip6_plen);
+    return sizeof(struct ip6_hdr) + ntohs(c_ip6().ip6_plen);
 }
-
+ 
 void packet::update_icmp6_checksum()
 {
     if (c_ip6().ip6_nxt != IPPROTO_ICMPV6)
         throw new std::invalid_argument("not an ICMP6 packet");
 
-    uint8_t buf[40];
-
-    *reinterpret_cast<struct in6_addr *>(buf) = c_ip6().ip6_src;
-    *reinterpret_cast<struct in6_addr *>(&buf[16]) = c_ip6().ip6_dst;
-    *reinterpret_cast<uint32_t *>(&buf[32]) = c_ip6().ip6_plen;
-
-    buf[36] = 0;
-    buf[37] = 0;
-    buf[38] = 0;
-    buf[39] = c_ip6().ip6_nxt;
-
-    uint32_t cksum = 0;
-    for (int i = 0; i < 20; i++)
-        cksum += *reinterpret_cast<uint16_t *>(buf + i * 2);
-
     icmp6().icmp6_cksum = 0;
 
-    size_t icmp6_length = length() - sizeof(struct ip6_hdr);
-    for (int i = 0; i < icmp6_length / 2; i++)
-        cksum += *reinterpret_cast<const uint16_t *>(
-            c_data() + sizeof(struct ip6_hdr) + i * 2); 
+    uint32_t cksum = 0;
+    ip_checksum_add(cksum, &c_ip6().ip6_src, sizeof(struct in6_addr));
+    ip_checksum_add(cksum, &c_ip6().ip6_dst, sizeof(struct in6_addr));
+    ip_checksum_add(cksum, (uint32_t)ntohs(c_ip6().ip6_plen));
+    cksum += c_ip6().ip6_nxt;
 
-    if (icmp6_length % 2)
-        cksum += *(c_data() + length() - 1);
+    ip_checksum_add(cksum, &c_icmp6(), ntohs(c_ip6().ip6_plen));
 
-    while (cksum & 0xffff0000)
-        cksum = (cksum >> 16) + (cksum & 0xffff);
-
-    icmp6().icmp6_cksum = cksum;
+    cksum += cksum >> 16;
+    icmp6().icmp6_cksum = htons(~cksum);
 }
 
-packet packet::create_solicit_packet()
+void packet::ip_checksum_add(uint32_t &current, const void *data, size_t len)
 {
-    packet p;
+    while (len > 1) {
+        current += ntohs(*reinterpret_cast<const uint16_t *>(data));
+        data = reinterpret_cast<const uint16_t *>(data) + 1;
+        len -= 2;
+    }
 
-    auto &ip6 = p.ip6();
+    if (len)
+        current += *reinterpret_cast<const uint8_t *>(data);
+}
+
+void packet::ip_checksum_add(uint32_t &current, uint32_t value)
+{
+    value = ntohl(value);
+    ip_checksum_add(current, &value, sizeof(uint32_t));
+}
+
+void packet::make_solicit_packet()
+{
+    auto &ip6 = this->ip6();
     ip6.ip6_flow = htonl(6 << 28);
-    ip6.ip6_plen = sizeof(struct icmp6_hdr) + sizeof(struct in6_addr);
+    ip6.ip6_plen = htons(sizeof(struct icmp6_hdr));
     ip6.ip6_hops = 255;
     ip6.ip6_nxt = IPPROTO_ICMPV6;
+    ip6.ip6_src = address_s("fd00::1").c_addr();
+    ip6.ip6_dst = address_s("fd00::1").c_addr();
 
-    auto &icmp6 = p.icmp6();
+    auto &icmp6 = this->icmp6();
     icmp6.icmp6_type = ND_NEIGHBOR_SOLICIT;
     icmp6.icmp6_id = htons(1000); // getpid()
     icmp6.icmp6_seq = 0;
 
-    p.target() = {};
+    update_icmp6_checksum();
 
-    return p;
+    target() = {};
 }
 
 

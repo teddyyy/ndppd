@@ -61,7 +61,7 @@ iface::~iface()
         close(_fd);
 }
 
-std::shared_ptr<iface> iface::open(const std::string& name)
+std::shared_ptr<iface> iface::open(const std::string &name)
 {
     auto it = _map.find(name);
     if (it != _map.end() && !it->second.expired())
@@ -71,25 +71,15 @@ std::shared_ptr<iface> iface::open(const std::string& name)
     struct make_shared_class : public iface {};
     std::shared_ptr<iface> iface(std::make_shared<make_shared_class>());
 
+    iface->_name = name;
+
     // Create a socket.
     if ((iface->_fd = socket(PF_PACKET, SOCK_DGRAM, htons(ETH_P_IPV6))) < 0)
         throw_system_error("could not create socket");
 
-    // Bind to the specified interface.
-    {
-        struct sockaddr_ll lladdr;
-
-        memset(&lladdr, 0, sizeof(struct sockaddr_ll));
-        lladdr.sll_family   = AF_PACKET;
-        lladdr.sll_protocol = htons(ETH_P_IPV6);
-
-        if (!(lladdr.sll_ifindex = if_nametoindex(name.c_str())))
-            throw_system_error("invalid interface");
-
-        if (bind(iface->_fd, (struct sockaddr *)&lladdr,
-                sizeof(struct sockaddr_ll)) < 0)
-            throw_system_error("failed to bind to interface");
-    }
+    // Get the index of the interface.
+    if (!(iface->_index = if_nametoindex(name.c_str())))
+        throw_system_error("invalid interface");
 
     // Detect the link-layer address.
     {
@@ -102,7 +92,6 @@ std::shared_ptr<iface> iface::open(const std::string& name)
     // Switch to non-blocking mode.
     {
         int on = 1;
-
         if (ioctl(iface->_fd, FIONBIO, (char *)&on) < 0)
             throw_system_error("failed to set non-blocking mode");
     }
@@ -183,7 +172,8 @@ ssize_t iface::write(const address_s &daddr, const packet_s &packet)
     memset(&sin6, 0, sizeof(struct sockaddr_in6));
     sin6.sin6_family = AF_INET6;
     sin6.sin6_port   = htons(IPPROTO_ICMPV6); // Needed?
-    sin6.sin6_addr   = daddr.c_addr();
+    sin6.sin6_addr   = *reinterpret_cast<const struct in6_addr *>(&packet);
+//  daddr.c_addr();
 
     struct iovec iov;
     iov.iov_len = packet.length();
@@ -201,8 +191,22 @@ ssize_t iface::write(const address_s &daddr, const packet_s &packet)
 
     ssize_t len;
 
-    if ((len = ::sendmsg(_fd, &mhdr, 0)) < 0)
-        return -1;
+    struct sockaddr_ll sll;
+    memset(&sll, 0, sizeof(sll));
+    sll.sll_family = AF_PACKET;
+    for (int x = 0; x < ETH_ALEN; x++) sll.sll_addr[x] = 0xff;
+    sll.sll_halen = ETH_ALEN;
+    sll.sll_protocol = htons(ETH_P_IPV6);
+    sll.sll_ifindex = _index;
+
+    //if (!(sll.sll_ifindex = if_nametoindex(_name.c_str())))
+    //    throw_system_error("invalid interface");
+
+    if ((len = ::sendto(_fd, &packet, packet.length(), 0,
+            (struct sockaddr *)&sll, sizeof(sll))) < 0)
+        throw_system_error("sendmsg() failed");
+    //if ((len = ::sendmsg(_fd, &mhdr, 0)) < 0)
+    //    throw_system_error("sendmsg() failed");
 
     return len;
 }
