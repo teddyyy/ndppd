@@ -18,7 +18,7 @@
 
 #include "ndppd.h"
 #include "packet.h"
-#include "address.h"
+#include "ip6addr.h"
 
 NDPPD_NS_BEGIN
 
@@ -32,52 +32,49 @@ uint8_t *packet::data()
     return _data;
 }
 
-const struct ip6_hdr &packet::c_ip6() const
+const ip6_hdr &packet::c_ip6() const
 {
-    return *reinterpret_cast<const struct ip6_hdr *>(_data);
+    return *reinterpret_cast<const ip6_hdr *>(_data);
 }
 
 struct ip6_hdr &packet::ip6()
 {
-    return *reinterpret_cast<struct ip6_hdr *>(_data);
+    return *reinterpret_cast<ip6_hdr *>(_data);
 }
 
-const struct icmp6_hdr &packet::c_icmp6() const
+const icmp6_hdr &packet::c_icmp6() const
 {
-    return *reinterpret_cast<const struct icmp6_hdr *>(
-        _data + sizeof(struct ip6_hdr));
+    return *reinterpret_cast<const icmp6_hdr *>(_data + sizeof(ip6_hdr));
 }
 
 struct icmp6_hdr &packet::icmp6()
 {
-    return *reinterpret_cast<struct icmp6_hdr *>(
-        _data + sizeof(struct ip6_hdr));
+    return *reinterpret_cast<icmp6_hdr *>(_data + sizeof(ip6_hdr));
 }
 
-const struct in6_addr &packet::c_target() const
+const in6_addr &packet::c_target() const
 {
-    return *reinterpret_cast<const struct in6_addr *>(
-        _data + sizeof(struct ip6_hdr) + sizeof(struct icmp6_hdr));
+    return *reinterpret_cast<const in6_addr *>(
+        _data + sizeof(ip6_hdr) + sizeof(icmp6_hdr));
 }
 
-struct in6_addr &packet::target()
+in6_addr &packet::target()
 {
-    return *reinterpret_cast<struct in6_addr *>(
-        _data + sizeof(struct ip6_hdr) + sizeof(struct icmp6_hdr));
+    return *reinterpret_cast<in6_addr *>(
+        _data + sizeof(ip6_hdr) + sizeof(icmp6_hdr));
 }
 
-struct nd_opt_hdr *packet::option(int type)
+nd_opt_hdr *packet::option(int type)
 {
-    uint8_t *p = _data + sizeof(struct ip6_hdr) +
-        sizeof(struct icmp6_hdr) + sizeof(struct in6_addr);
+    uint8_t *p = _data + sizeof(ip6_hdr) + sizeof(icmp6_hdr) + sizeof(in6_addr);
 
     int size = length() - (int)(p - _data);
 
     while (1) {
-        if (size < sizeof(struct nd_opt_hdr))
+        if (size < sizeof(nd_opt_hdr))
             return NULL;
 
-        auto *hdr = reinterpret_cast<struct nd_opt_hdr *>(p);
+        auto *hdr = reinterpret_cast<nd_opt_hdr *>(p);
 
         if (size < hdr->nd_opt_len * 8)
             return NULL;
@@ -90,6 +87,11 @@ struct nd_opt_hdr *packet::option(int type)
     }
 }
 
+const ip6addr_s &packet::c_daddr() const
+{
+    return *reinterpret_cast<const ip6addr_s *>(&c_ip6().ip6_dst);
+}
+
 int packet::type() const
 {
     return c_icmp6().icmp6_type;
@@ -97,7 +99,7 @@ int packet::type() const
 
 size_t packet::length() const
 {
-    return sizeof(struct ip6_hdr) + ntohs(c_ip6().ip6_plen);
+    return sizeof(ip6_hdr) + ntohs(c_ip6().ip6_plen);
 }
  
 void packet::update_icmp6_checksum()
@@ -108,8 +110,8 @@ void packet::update_icmp6_checksum()
     icmp6().icmp6_cksum = 0;
 
     uint32_t cksum = 0;
-    ip_checksum_add(cksum, &c_ip6().ip6_src, sizeof(struct in6_addr));
-    ip_checksum_add(cksum, &c_ip6().ip6_dst, sizeof(struct in6_addr));
+    ip_checksum_add(cksum, &c_ip6().ip6_src, sizeof(in6_addr));
+    ip_checksum_add(cksum, &c_ip6().ip6_dst, sizeof(in6_addr));
     ip_checksum_add(cksum, (uint32_t)ntohs(c_ip6().ip6_plen));
     cksum += c_ip6().ip6_nxt;
 
@@ -141,11 +143,11 @@ void packet::make_solicit_packet()
 {
     auto &ip6 = this->ip6();
     ip6.ip6_flow = htonl(6 << 28);
-    ip6.ip6_plen = htons(sizeof(struct icmp6_hdr));
+    ip6.ip6_plen = htons(sizeof(icmp6_hdr));
     ip6.ip6_hops = 255;
     ip6.ip6_nxt = IPPROTO_ICMPV6;
-    ip6.ip6_src = address_s("fd00::1").c_addr();
-    ip6.ip6_dst = address_s("fd00::1").c_addr();
+    ip6.ip6_src = ip6addr_s();
+    ip6.ip6_dst = ip6addr_s("ff02::1:ff00:0000");
 
     auto &icmp6 = this->icmp6();
     icmp6.icmp6_type = ND_NEIGHBOR_SOLICIT;

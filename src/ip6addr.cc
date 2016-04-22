@@ -25,22 +25,23 @@
 #include <netinet/ip6.h>
 #include <arpa/inet.h>
 
-#include "address.h"
+#include "ip6addr.h"
+#include "lladdr.h"
 
 NDPPD_NS_BEGIN
 
-address::address(const std::string &str)
-    : address(str.c_str())
+ip6addr::ip6addr(const std::string &str)
+    : ip6addr(str.c_str())
 {
 }
 
-address::address(const char *str)
+ip6addr::ip6addr(const char *str)
 {
-    if (inet_pton(AF_INET6, str, this) <= 0)
-        throw new std::invalid_argument("invalid ip6 address");
+    if (inet_pton(AF_INET6, str, _addr) <= 0)
+        throw new std::invalid_argument("invalid ip6 ip6addr");
 }
 
-address::address(const in6_addr& addr)
+ip6addr::ip6addr(const in6_addr &addr)
 {
     _addr[0] = addr.s6_addr32[0];
     _addr[1] = addr.s6_addr32[1];
@@ -48,54 +49,56 @@ address::address(const in6_addr& addr)
     _addr[3] = addr.s6_addr32[3];
 }
 
-bool address::operator==(const address_s &address) const
+bool ip6addr::operator==(const ip6addr_s &addr) const
 {
     return
-        address._addr[0] == _addr[0] && address._addr[1] == _addr[1] &&
-        address._addr[2] == _addr[2] && address._addr[3] == _addr[3];
+        addr._addr[0] == _addr[0] && addr._addr[1] == _addr[1] &&
+        addr._addr[2] == _addr[2] && addr._addr[3] == _addr[3];
 }
 
-bool address::operator!=(const address_s &address) const
+bool ip6addr::operator!=(const ip6addr_s &ip6addr) const
 {
-    return !(*this == address);
+    return !(*this == ip6addr);
 }
 
-const std::string address::to_string() const
+const std::string ip6addr::to_string() const
 {
     char buf[INET6_ADDRSTRLEN];
 
-    if (!inet_ntop(AF_INET6,& _addr, buf, INET6_ADDRSTRLEN))
+    if (!inet_ntop(AF_INET6, &_addr, buf, INET6_ADDRSTRLEN))
         return "::1";
 
     return buf;
 }
 
-address::operator std::string() const
+ip6addr::operator std::string() const
 {
     return to_string();
 }
 
-struct in6_addr &address::addr()
-{
-    return *reinterpret_cast<struct in6_addr *>(this);
-}
-
-const struct in6_addr& address::c_addr() const
-{
-    return *reinterpret_cast<const struct in6_addr *>(this);
-}
-
-bool address::is_multicast() const
+bool ip6addr::is_multicast() const
 {
     return *reinterpret_cast<const uint8_t *>(this) == 0xff;
 }
 
-bool address::is_unicast() const
+bool ip6addr::is_unicast() const
 {
     return *reinterpret_cast<const uint8_t *>(this) != 0xff;
 }
 
-/*address::operator const struct in6_addr &() const
+lladdr ip6addr::get_multicast_lladdr() const
+{
+    auto *p = reinterpret_cast<const uint8_t *>(&_addr[3]);
+    uint8_t addr[] = { 0x33, 0x33, p[0], p[1], p[2], p[3] };
+    return *reinterpret_cast<lladdr *>(addr);
+}
+
+ip6addr::operator const in6_addr &() const
+{
+    return *reinterpret_cast<const in6_addr *>(_addr);
+}
+
+/*ip6addr::operator const struct in6_addr &() const
 {
     return c_addr();
 }*/

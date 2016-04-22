@@ -41,6 +41,7 @@
 
 #include "ndppd.h"
 #include "iface.h"
+#include "lladdr.h"
 
 NDPPD_NS_BEGIN
 
@@ -81,12 +82,12 @@ std::shared_ptr<iface> iface::open(const std::string &name)
     if (!(iface->_index = if_nametoindex(name.c_str())))
         throw_system_error("invalid interface");
 
-    // Detect the link-layer address.
+    // Detect the link-layer ip6addr.
     {
         struct ifreq ifr;
         strcpy(ifr.ifr_name, name.c_str());
         if (ioctl(iface->_fd, SIOCGIFHWADDR, &ifr) < 0)
-            throw_system_error("failed to determine link-layer address");
+            throw_system_error("failed to determine link-layer ip6addr");
     }
 
     // Switch to non-blocking mode.
@@ -137,7 +138,7 @@ std::shared_ptr<iface> iface::open(const std::string &name)
     return iface;
 }
 
-ssize_t iface::read(address_s &saddr, packet_s &packet)
+ssize_t iface::read(ip6addr_s &saddr, packet_s &packet)
 {
 
     struct iovec iov;
@@ -166,35 +167,23 @@ ssize_t iface::read(address_s &saddr, packet_s &packet)
     return len;
 }
 
-ssize_t iface::write(const address_s &daddr, const packet_s &packet)
+ssize_t iface::write(const packet_s &packet, const lladdr_s &addr)
 {
-    struct sockaddr_in6 sin6;
-    memset(&sin6, 0, sizeof(struct sockaddr_in6));
-    sin6.sin6_family = AF_INET6;
-    sin6.sin6_port   = htons(IPPROTO_ICMPV6); // Needed?
-    sin6.sin6_addr   = *reinterpret_cast<const struct in6_addr *>(&packet);
-//  daddr.c_addr();
-
-    struct iovec iov;
-    iov.iov_len = packet.length();
-    iov.iov_base = (caddr_t)&packet;
-
-    struct msghdr mhdr;
-    memset(&mhdr, 0, sizeof(struct msghdr));
-    mhdr.msg_name = (caddr_t)&sin6;
-    mhdr.msg_namelen = sizeof(struct sockaddr_in6);
-    mhdr.msg_iov = &iov;
-    mhdr.msg_iovlen = 1;
-
-    logger::debug() << "iface::write() daddr=" << daddr.to_string() << ", len="
-                    << packet.length();
-
     ssize_t len;
 
     struct sockaddr_ll sll;
     memset(&sll, 0, sizeof(sll));
     sll.sll_family = AF_PACKET;
-    for (int x = 0; x < ETH_ALEN; x++) sll.sll_addr[x] = 0xff;
+
+
+
+    memset(&sll.sll_addr, 0xff, ETH_ALEN);
+    if (packet.c_daddr().is_multicast()) {
+        auto lladdr = packet.c_daddr().get_multicast_lladdr();
+        memcpy(&sll.sll_addr, &lladdr, 6);
+    }
+
+    //sll.sll_addr
     sll.sll_halen = ETH_ALEN;
     sll.sll_protocol = htons(ETH_P_IPV6);
     sll.sll_ifindex = _index;
@@ -277,7 +266,7 @@ int iface::poll_all()
 
         std::shared_ptr<iface> iface = i_it->second.lock();
 
-        address saddr, daddr, taddr;
+        ip6addr saddr, daddr, taddr;
         packet packet;
 
         if (iface->read(saddr, packet) < 0) {

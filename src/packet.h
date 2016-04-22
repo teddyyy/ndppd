@@ -23,7 +23,7 @@
 NDPPD_NS_BEGIN
 
 class packet {
-    uint8_t _data[1024];
+    uint8_t _data[128];
 
     void ip_checksum_add(uint32_t &current, uint32_t value);
     void ip_checksum_add(uint32_t &current, const void *data, size_t len);
@@ -42,6 +42,8 @@ class packet {
 
 public:
     void make_solicit_packet();
+
+    const ip6addr_s &c_daddr() const;
 
     int type() const;
     size_t length() const;

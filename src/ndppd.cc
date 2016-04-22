@@ -93,7 +93,7 @@ static std::shared_ptr<conf> load_config(const std::string &path)
             std::shared_ptr<conf> ru_cf =* r_it;
 
             if (ru_cf->empty()) {
-                logger::error() << "'rule' is missing an IPv6 address/net";
+                logger::error() << "'rule' is missing an IPv6 ip6addr/net";
                 return NULL;
             }
 
@@ -213,10 +213,7 @@ int main(int argc, char* argv[], char* env[])
 
     packet p;
     p.make_solicit_packet();
-    iface->write("fd00::1", p);
-
-    cidr c("::1/32");
-    logger::debug() << c;
+    iface->write(p);
     return 0;
 
 

@@ -26,7 +26,7 @@
 #include "ndppd.h"
 #include "proxy.h"
 #include "packet.h"
-#include "address.h"
+#include "ip6addr.h"
 
 NDPPD_NS_BEGIN
 
@@ -39,9 +39,9 @@ struct iface : std::enable_shared_from_this<iface> {
 
     static int poll_all();
 
-    ssize_t read(address_s &address, packet_s &packet);
+    ssize_t read(ip6addr_s &ip6addr, packet_s &packet);
 
-    ssize_t write(const address_s &address, const packet_s &packet);
+    ssize_t write(const packet_s &packet);
 
     // Returns the name of the interface.
     const std::string& name() const;
@@ -80,7 +80,7 @@ private:
 
     std::weak_ptr<ndppd::proxy> _proxy;
 
-    // The link-layer address of this interface.
+    // The link-layer ip6addr of this interface.
     struct ether_addr _hwaddr;
 
     // Turns on/off ALLMULTI for this interface - returns the previous state

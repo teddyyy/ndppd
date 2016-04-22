@@ -100,7 +100,7 @@ void route::load(const std::string& path)
                 continue;
             }
 
-            /*address addr;
+            /*ip6addr addr;
 
             unsigned char pfx;
 
@@ -148,21 +148,21 @@ std::shared_ptr<route> route::create(const cidr_s &cidr,
     return route;
 }
 
-std::shared_ptr<route> route::find(const address_s &address)
+std::shared_ptr<route> route::find(const ip6addr_s &ip6addr)
 {
     for (auto it = _routes.begin(); it != _routes.end(); it++) {
-        if ((*it)->cidr().contains(address))
+        if ((*it)->cidr().contains(ip6addr))
             return *it;
     }
 
     return std::shared_ptr<route>();
 }
 
-std::shared_ptr<iface> route::find_and_open(const address_s &address)
+std::shared_ptr<iface> route::find_and_open(const ip6addr_s &ip6addr)
 {
     std::shared_ptr<route> route;
 
-    if (route = find(address)) {
+    if (route = find(ip6addr)) {
         return route->iface();
     }
 

@@ -49,7 +49,7 @@ cidr::cidr(const char *str)
     *bp = '\0';
 
     if (inet_pton(AF_INET6, buf, _addr) != 1) {
-        throw std::invalid_argument("invalid ipv6 address");
+        throw std::invalid_argument("invalid ipv6 ip6addr");
     }
 
     while (isspace(*str))
@@ -80,20 +80,9 @@ cidr::cidr(const char *str)
     this->prefix(prefix);
 }
 
-cidr::cidr(const in6_addr &addr)
+cidr::cidr(const ip6addr &addr, int prefix)
 {
-    memcpy(_addr, &addr, 16);
-}
-
-cidr::cidr(const in6_addr &addr, const in6_addr &mask)
-{
-    memcpy(_addr, &addr, 16);
-    memcpy(_mask, &mask, 16);
-}
-
-cidr::cidr(const in6_addr &addr, int prefix)
-{
-    memcpy(_addr, &addr, 16);
+    *reinterpret_cast<ip6addr *>(_addr) = addr;
     this->prefix(prefix);
 }
 
@@ -127,12 +116,12 @@ int cidr::prefix() const
     return prefix;
 }
 
-bool cidr::contains(const address &address) const
+bool cidr::contains(const ip6addr &addr) const
 {
-    return !(((_addr[0] ^ address.c_addr().s6_addr32[0]) & _mask[0]) |
-             ((_addr[1] ^ address.c_addr().s6_addr32[1]) & _mask[1]) |
-             ((_addr[2] ^ address.c_addr().s6_addr32[2]) & _mask[2]) |
-             ((_addr[3] ^ address.c_addr().s6_addr32[3]) & _mask[3]));
+    return !(((_addr[0] ^ addr._addr[0]) & _mask[0]) |
+             ((_addr[1] ^ addr._addr[1]) & _mask[1]) |
+             ((_addr[2] ^ addr._addr[2]) & _mask[2]) |
+             ((_addr[3] ^ addr._addr[3]) & _mask[3]));
 }
 
 const std::string cidr::to_string() const
@@ -156,14 +145,14 @@ cidr::operator std::string() const
     return to_string();
 }
 
-const struct in6_addr &cidr::addr() const
+const struct ip6addr &cidr::addr() const
 {
-    return *reinterpret_cast<const struct in6_addr *>(_addr);
+    return *reinterpret_cast<const struct ip6addr *>(_addr);
 }
 
-const struct in6_addr &cidr::mask() const
+const struct ip6addr &cidr::mask() const
 {
-    return *reinterpret_cast<const struct in6_addr *>(_mask);
+    return *reinterpret_cast<const struct ip6addr *>(_mask);
 }
 
 bool cidr::is_multicast() const

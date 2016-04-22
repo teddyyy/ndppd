@@ -12,9 +12,9 @@ SBINDIR ?= ${DESTDIR}${PREFIX}/sbin
 
 LIBS     =
 
-OBJS     = src/logger.o src/ndppd.o src/iface.o src/proxy.o src/address.o \
+OBJS     = src/logger.o src/ndppd.o src/iface.o src/proxy.o src/ip6addr.o \
            src/rule.o src/session.o src/conf.o src/route.o src/cidr.o \
-           src/packet.o
+           src/packet.o src/lladdr.o
 
 all: ndppd ndppd.1.gz ndppd.conf.5.gz
 

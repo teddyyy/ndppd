@@ -17,34 +17,36 @@
 
 #include <string>
 #include <netinet/ip6.h>
+#include <netinet/ether.h>
 
 #include "ndppd.h"
 
 NDPPD_NS_BEGIN
 
-struct address {
-    address() {}
-    address(const address &addr);
-    address(const std::string &str);
-    address(const char *str);
-    address(const in6_addr &addr);
+struct ip6addr {
+    friend cidr_s;
 
-    const struct in6_addr &c_addr() const;
-    struct in6_addr &addr();
+    ip6addr() {}
+    ip6addr(const ip6addr &addr);
+    ip6addr(const std::string &str);
+    ip6addr(const char *str);
+    ip6addr(const in6_addr &addr);
 
     // Compare _a/_m against a._a.
-    bool operator==(const address_s& addr) const;
-    bool operator!=(const address_s& addr) const;
+    bool operator==(const ip6addr_s& addr) const;
+    bool operator!=(const ip6addr_s& addr) const;
 
     const std::string to_string() const;
 
     bool parse_string(const std::string& str);
 
     bool is_unicast() const;
-
     bool is_multicast() const;
+    lladdr get_multicast_lladdr() const;
 
     operator std::string() const;
+    operator const in6_addr &() const;
+
 //    operator struct in6_addr &() const;
 
 private:

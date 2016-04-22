@@ -1,5 +1,5 @@
 // ndppd - NDP Proxy Daemon
-// Copyright (C) 2011  Daniel Adolfsson <daniel@priv.nu>
+// Copyright (C) 2011-2016  Daniel Adolfsson <daniel@priv.nu>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -17,44 +17,22 @@
 
 #include <string>
 #include <netinet/ip6.h>
+#include <netinet/ether.h>
 
 #include "ndppd.h"
-#include "ip6addr.h"
 
 NDPPD_NS_BEGIN
 
-class iface;
+// This struct represents a link-layer, or MAC, address.
+struct lladdr {
+    lladdr() {}
 
-class cidr {
-private:
-    uint32_t _addr[4];
-    uint32_t _mask[4];
-
-    void prefix(int prefix);
-
-public:
-    cidr();
-    cidr(const std::string &str);
-    cidr(const char *str);
-    cidr(const ip6addr &addr, int prefix = 128);
-
-    const ip6addr &addr() const;
-    const ip6addr &mask() const;
-
-    const std::string to_string() const;
-
-    // Returns true if the CIDR contains the specified ip6addr. */
-    bool contains(const ip6addr &ip6addr) const;
-
-    // Returns the prefix length. */
-    int prefix() const;
-
-    bool is_unicast() const;
-
-    bool is_multicast() const;
+    lladdr(const uint8_t *addr);
 
     operator std::string() const;
 
+private:
+    uint8_t _addr[6];
 };
 
 NDPPD_NS_END

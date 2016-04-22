@@ -31,8 +31,8 @@ struct proxy : std::enable_shared_from_this<proxy> {
 
     static std::shared_ptr<proxy_s> create(const std::string &ifname);
 
-    void handle_solicit(const address_s &saddr, const address_s &daddr,
-        const class address &taddr);
+    void handle_solicit(const ip6addr_s &saddr, const ip6addr_s &daddr,
+        const class ip6addr &taddr);
 
     void remove_session(const std::shared_ptr<session_s> &session);
 
