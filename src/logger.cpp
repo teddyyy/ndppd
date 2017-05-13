@@ -1,4 +1,4 @@
- // ndppd - NDP Proxy Daemon
+// ndppd - NDP Proxy Daemon
 // Copyright (C) 2011  Daniel Adolfsson <daniel@priv.nu>
 //
 // This program is free software: you can redistribute it and/or modify
@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 #include <cstdio>
 #include <cstdarg>
 #include <cctype>
@@ -22,22 +23,10 @@
 #include <iostream>
 #include <sstream>
 
-#include "ndppd.h"
-#include "logger.h"
+#include "ndppd.hpp"
+#include "logger.hpp"
 
 NDPPD_NS_BEGIN
-
-/*const char* log::_level_str[] =
-{
-    "fatal",
-    "alert",
-    "critical",
-    "error",
-    "warning",
-    "notice",
-    "info",
-    "debug"
-};*/
 
 int logger::_max_pri = LOG_NOTICE;
 
@@ -85,7 +74,7 @@ std::string logger::err()
     char buf[2048];
 
 #if (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && ! _GNU_SOURCE
-    if (strerror_r(errno, buf, sizeof(buf))
+    if (strerror_r(errno, buf, sizeof(buf)))
         return "Unknown error";
     return buf;
 #else
@@ -174,7 +163,7 @@ void logger::syslog(bool sl)
     if (sl == _syslog)
         return;
 
-    if (_syslog = sl) {
+    if ((_syslog = sl)) {
         setlogmask(LOG_UPTO(LOG_DEBUG));
         openlog("ndppd", LOG_CONS | LOG_NDELAY | LOG_PERROR | LOG_PID, LOG_USER);
     } else {

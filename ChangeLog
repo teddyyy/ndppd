@@ -1,3 +1,12 @@
+2017-05-09  Daniel Adolfsson  <daniel@priv.nu>
+
+    * Version 1.0.0
+
+        * Refactored the code to make it easier to follow.
+
+        * Switched to C++11, and replaced the custom smart pointer implementation
+          with std::shared_ptr.
+
 2016-04-18  Daniel Adolfsson  <daniel@priv.nu>
 
     * Version 0.2.5

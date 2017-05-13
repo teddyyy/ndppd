@@ -17,12 +17,10 @@
 #include <memory>
 #include <fstream>
 
-#include "ndppd.h"
+#include "ndppd.hpp"
 #include "route.h"
 
 NDPPD_NS_BEGIN
-
-std::list<ptr<route> > route::_routes;
 
 int route::_ttl;
 
@@ -31,6 +29,9 @@ int route::_c_ttl;
 route::route(const address& addr, const std::string& ifname) :
     _addr(addr), _ifname(ifname)
 {
+
+
+
 }
 
 size_t route::hexdec(const char* str, unsigned char* buf, size_t size)

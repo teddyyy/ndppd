@@ -18,19 +18,19 @@
 #include <string.h>
 #include <net/if.h>
 
-#include "ndppd.h"
+#include "ndppd.hpp"
 #include "rule.h"
-#include "proxy.h"
-#include "iface.h"
+#include "proxy.hpp"
+#include "interface.hpp"
 
 NDPPD_NS_BEGIN
 
-std::vector<interface> interfaces;
-
 bool rule::_any_aut = false;
 
-rule::rule()
+rule::rule(const address &address, const std::shared_ptr<ndppd::interface> &interface) :
+    _address(address), _interface()
 {
+
 }
 
 ptr<rule> rule::create(const ptr<proxy>& pr, const address& addr, const ptr<iface>& ifa)
@@ -73,29 +73,9 @@ ptr<rule> rule::create(const ptr<proxy>& pr, const address& addr, bool aut)
     return ru;
 }
 
-const address& rule::addr() const
+bool rule::check(const address &address) const
 {
-    return _addr;
-}
-
-ptr<iface> rule::ifa() const
-{
-    return _ifa;
-}
-
-bool rule::is_auto() const
-{
-    return _aut;
-}
-
-bool rule::any_auto()
-{
-    return _any_aut;
-}
-
-bool rule::check(const address& addr) const
-{
-    return _addr == addr;
+    return _address == address;
 }
 
 NDPPD_NS_END

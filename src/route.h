@@ -19,11 +19,12 @@
 #include <list>
 #include <memory>
 
-#include "ndppd.h"
+#include "ndppd.hpp"
 
 NDPPD_NS_BEGIN
 
-class route {
+class route
+{
 public:
     static ptr<route> create(const address& addr, const std::string& ifname);
 

@@ -2,6 +2,7 @@
 //@file nd-netlink.cc
 //
 // Copyright 2016, Allied Telesis Labs New Zealand, Ltd
+// Copyright (C) 2011-2017  Daniel Adolfsson <daniel@priv.nu>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -20,7 +21,7 @@
 #include <errno.h>
 #include <netlink/route/addr.h>
 #include <arpa/inet.h>
-#include "ndppd.h"
+#include "ndppd.hpp"
 #include <algorithm>
 
 NDPPD_NS_BEGIN

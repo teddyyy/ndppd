@@ -13,26 +13,28 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#pragma once
 
-#include <netinet/ip6.h>
-#include <memory>
+#ifndef NDPPD_H
+#define NDPPD_H
 
 #define NDPPD_NS_BEGIN   namespace ndppd {
 #define NDPPD_NS_END     }
 
-#define NDPPD_VERSION   "0.2.4"
+#define NDPPD_VERSION   "1.0.0"
 
-#include <assert.h>
+#define NDPPD_SAFE_CONSTRUCTOR(_Tp) \
+    template<typename... _Args> \
+    static std::shared_ptr<_Tp> create(_Args&&... __args) \
+    { \
+        struct _S : public _Tp { _S(_Args&&... __args) : _Tp(std::forward<_Args>(__args)...) {} }; \
+        return std::static_pointer_cast<_Tp>(std::make_shared<_S>(std::forward<_Args>(__args)...)); \
+    }
 
-#include "ptr.h"
+NDPPD_NS_BEGIN
 
-#include "logger.h"
-#include "conf.h"
-#include "address.h"
+class interface;
+class socket;
 
-#include "iface.h"
-#include "proxy.h"
-#include "session.h"
-#include "rule.h"
-#include "nd-netlink.h"
+NDPPD_NS_END
+
+#endif // NDPPD_H

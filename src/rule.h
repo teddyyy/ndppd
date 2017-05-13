@@ -13,7 +13,9 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#pragma once
+
+#ifndef NDPPD_RULE_HPP
+#define NPPPD_RULE_HPP
 
 #include <string>
 #include <vector>
@@ -21,59 +23,42 @@
 #include <list>
 
 #include <sys/poll.h>
+#include <memory>
 
-#include "ndppd.h"
+#include "ndppd.hpp"
+#include "address.hpp"
 
 NDPPD_NS_BEGIN
 
-class iface;
+class interface;
 class proxy;
 
-class rule {
+enum class rule_type
+{
+    INTERFACE,
+    STATIC,
+    AUTO
+};
+
+class rule
+{
 public:
-    static ptr<rule> create(const ptr<proxy>& pr, const address& addr, const ptr<iface>& ifa);
+    NDPPD_SAFE_CONSTRUCTOR(rule)
 
-    static ptr<rule> create(const ptr<proxy>& pr, const address& addr, bool stc = true);
-
-    const address& addr() const;
-
-    ptr<iface> ifa() const;
+    const address &address() const;
+    const std::shared_ptr<interface> &interface_() const;
 
     bool is_auto() const;
 
-    bool check(const address& addr) const;
-
-    static bool any_auto();
+    bool check(const address &address) const;
 
 private:
-    weak_ptr<rule> _ptr;
+    rule(const std::shared_ptr<proxy> &proxy, const address &address, const std::shared_ptr &interface);
 
-    weak_ptr<proxy> _pr;
+    std::shared_ptr<ndppd::interface> _interface;
+    address _address;
 
-    ptr<iface> _ifa;
-
-    address _addr;
-
-    bool _aut;
-
-    static bool _any_aut;
-
-    rule();
+    bool _auto;
 };
-
-class interface {
-public:
-    // List of IPv6 addresses on this interface
-    std::list<address> addresses;
-
-    // Index of this interface
-    int ifindex;
-
-    // Name of this interface.
-    std::string _name;
-
-};
-
-extern std::vector<interface> interfaces;
 
 NDPPD_NS_END

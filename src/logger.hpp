@@ -32,7 +32,8 @@
 
 NDPPD_NS_BEGIN
 
-class logger {
+class logger
+{
 public:
     logger(int pri = LOG_NOTICE);
 
@@ -61,7 +62,7 @@ public:
 
     logger& force_log(bool b = true);
 
-    static logger& endl(logger& __l);
+    static logger &endl(logger& __l);
 
     // Shortcuts.
 

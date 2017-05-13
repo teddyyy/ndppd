@@ -13,66 +13,59 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#pragma once
+
+#ifndef NDPPD_INTERFACE_HPP
+#define NDPPD_INTERFACE_HPP
 
 #include <string>
+#include <list>
 #include <vector>
 #include <map>
 
 #include <sys/poll.h>
+#include <net/ethernet.h>
 
-#include "ndppd.h"
+#include "ndppd.hpp"
+#include "address.hpp"
+#include "hwaddress.hpp"
+#include "socket.hpp"
 
 NDPPD_NS_BEGIN
 
-class iface;
-class rule;
+class inet6_socket;
+class packet_socket;
+class session;
+class proxy;
 
-class proxy {
+class interface
+{
 public:
-    static ptr<proxy> create(const ptr<iface>& ifa);
+    static std::shared_ptr<interface> get_or_create(const std::string &name);
 
-    static ptr<proxy> open(const std::string& ifn);
+    //! Destructor.
+    ~interface();
 
-    void handle_solicit(const address& saddr, const address& daddr,
-        const address& taddr);
+    //! Returns the name of the interface.
+    const std::string &name() const;
 
-    void remove_session(const ptr<session>& se);
-
-    ptr<rule> add_rule(const address& addr, const ptr<iface>& ifa);
-
-    ptr<rule> add_rule(const address& addr, bool aut = false);
-
-    const ptr<iface>& ifa() const;
-
-    bool router() const;
-
-    void router(bool val);
-
-    int timeout() const;
-
-    void timeout(int val);
-
-    int ttl() const;
-
-    void ttl(int val);
+    const std::shared_ptr<ndppd::packet_socket> &packet_socket();
 
 private:
-    static std::list<ptr<proxy> > _list;
+    static std::map<std::string, std::weak_ptr<interface>> _interfaces;
 
-    weak_ptr<proxy> _ptr;
+    NDPPD_SAFE_CONSTRUCTOR(interface)
 
-    ptr<iface> _ifa;
+    interface(const std::string &name);
 
-    std::list<ptr<rule> > _rules;
+    std::string _name;
 
-    std::list<ptr<session> > _sessions;
+    int _index;
 
-    bool _router;
+    std::shared_ptr<icmp6_socket> _icmp6_socket;
 
-    int _ttl, _timeout;
-
-    proxy();
+    std::shared_ptr<ndppd::packet_socket> _packet_socket;
 };
 
 NDPPD_NS_END
+
+#endif // NDPPD_INTERFACE_HPP
