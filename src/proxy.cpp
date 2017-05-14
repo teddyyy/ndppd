@@ -33,6 +33,20 @@ std::shared_ptr<proxy> proxy::get_or_create(const std::string &name)
     return _proxies[name] = create(name);
 }
 
+void proxy::update_all(int elapsed)
+{
+    for (const auto &entry : _proxies) {
+        auto &proxy = entry.second;
+        for (auto it = proxy->_sessions.begin(); it != proxy->_sessions.end(); ) {
+            (*it)->update(elapsed);
+            if ((*it)->ttl() <= 0)
+                proxy->_sessions.erase(it++);
+            else
+                it++;
+        }
+    }
+}
+
 proxy::proxy(const std::string &ifname)
         : _router(true), _ttl(30000), _timeout(500),
           _interface(interface::get_or_create(ifname)),
@@ -57,16 +71,8 @@ void proxy::handle_ns(const cidr &src, const cidr &dst, const cidr &tgt)
 
     for (auto it = _sessions.begin(); it != _sessions.end(); it++) {
         if ((*it)->tgt() == tgt) {
-            switch ((*it)->status()) {
-            case session_status::WAITING:
-            case session_status::INVALID:
-                break;
-
-            case session_status::VALID:
+            if ((*it)->status() == session_status::VALID)
                 (*it)->send_na();
-                break;
-            }
-
             return;
         }
     }
@@ -76,7 +82,7 @@ void proxy::handle_ns(const cidr &src, const cidr &dst, const cidr &tgt)
 
     std::shared_ptr<session> session;
 
-    for (auto rule : _rules) {
+    for (const auto &rule : _rules) {
         logger::debug() << "checking " << rule->cidr() << " against " << tgt;
 
         if (!(dst.is_multicast() && rule->cidr() != dst) || rule->cidr() != tgt)

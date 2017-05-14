@@ -29,9 +29,9 @@ public:
 
     hwaddress(const ether_addr &addr);
 
-    ether_addr &addr();
+    ether_addr &addr() { return _addr; }
 
-    const ether_addr &c_addr() const;
+    ether_addr &const_addr() const { return _addr; }
 
 private:
     ether_addr _addr;

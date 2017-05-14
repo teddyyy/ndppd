@@ -18,7 +18,7 @@
 #include <fstream>
 
 #include "ndppd.hpp"
-#include "route.h"
+#include "route.hpp"
 
 NDPPD_NS_BEGIN
 

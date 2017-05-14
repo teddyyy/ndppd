@@ -1,5 +1,5 @@
 // ndppd - NDP Proxy Daemon
-// Copyright (C) 2011  Daniel Adolfsson <daniel@priv.nu>
+// Copyright (C) 2011-2017  Daniel Adolfsson <daniel@priv.nu>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -37,14 +37,10 @@ enum class session_status
 class session
 {
 public:
-    static void update_all(int elapsed_time);
-
     NDPPD_SAFE_CONSTRUCTOR(session)
 
     // Destructor.
     ~session();
-
-    void add_interface(const std::shared_ptr<interface> &interface);
 
     void handle_na();
 
@@ -52,13 +48,15 @@ public:
 
     void send_ns();
 
-    void refesh();
+    void update(int elapsed);
 
     const cidr &tgt() const { return _tgt; }
 
     const cidr &dst() const { return _dst; }
 
     const cidr &src() const { return _src; }
+
+    int ttl() const { return _ttl; }
 
     void status(session_status status) { _status = status; }
 
@@ -71,13 +69,13 @@ private:
 
     cidr _src, _dst, _tgt;
 
-    /*! The remaining time in milliseconds the object will stay in the interface's session array or cache. */
+    //! The remaining time in milliseconds the object will stay in the interface's session array or cache.
     int _ttl;
 
-    /*! Current session status, */
+    //! Current session status.
     session_status _status;
 
-    /*! An list of interfaces this session is monitoring for ND_NEIGHBOR_ADVERT on. */
+    //! An list of interfaces this session is monitoring for ND_NEIGHBOR_ADVERT on.
     std::list<std::shared_ptr<interface>> _interfaces;
 
 };

@@ -39,7 +39,7 @@ class proxy : public std::enable_shared_from_this<proxy>
 public:
     static std::shared_ptr<proxy> get_or_create(const std::string &name);
 
-    void update(int elapsed);
+    static void update_all(int elapsed);
 
     bool router() const { return _router; }
 
@@ -52,7 +52,6 @@ public:
     int ttl() const { return _ttl; }
 
     void ttl(int ttl) { _ttl = ttl; }
-
 
     const std::shared_ptr<class interface> &interface() const { return _interface; }
 

@@ -1,5 +1,5 @@
 // ndppd - NDP Proxy Daemon
-// Copyright (C) 2011  Daniel Adolfsson <daniel@priv.nu>
+// Copyright (C) 2011-2017  Daniel Adolfsson <daniel@priv.nu>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef NDPPD_H
-#define NDPPD_H
+#ifndef NDPPD_HPP
+#define NDPPD_HPP
 
 #define NDPPD_NS_BEGIN   namespace ndppd {
 #define NDPPD_NS_END     }
@@ -37,4 +37,4 @@ class socket;
 
 NDPPD_NS_END
 
-#endif // NDPPD_H
+#endif // NDPPD_HPP

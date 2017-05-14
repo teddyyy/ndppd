@@ -88,14 +88,14 @@ private:
     explicit icmp6_socket(const std::string &ifname);
 };
 
-/*! Socket for receiving neighbor solicitation messages. */
+//! Socket for receiving neighbor solicitation messages.
 class packet_socket
         : public socket
 {
 public:
     NDPPD_SAFE_CONSTRUCTOR(packet_socket)
 
-    /*! Receive neighbor solicitation message. */
+    //! Receive neighbor solicitation message.
     ssize_t recv_ns(cidr &src, cidr &dst, cidr &tgt) const;
 
 private:

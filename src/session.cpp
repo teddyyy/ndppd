@@ -1,5 +1,5 @@
 // ndppd - NDP Proxy Daemon
-// Copyright (C) 2011  Daniel Adolfsson <daniel@priv.nu>
+// Copyright (C) 2011-2017  Daniel Adolfsson <daniel@priv.nu>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -15,6 +15,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <algorithm>
+#include <cassert>
 
 #include "ndppd.hpp"
 #include "proxy.hpp"
@@ -25,41 +26,6 @@
 NDPPD_NS_BEGIN
 
 static cidr all_nodes = cidr("ff02::1");
-
-#ifdef JUNK
-void session::update_all(int elapsed_time)
-{
-    for (auto it = _sessions.begin(); it != _sessions.end(); ) {
-        auto session = (*it).lock();
-
-        if (!session) {
-            _sessions.erase(it++);
-            continue;
-        }
-
-        auto proxy = session->_proxy.lock();
-
-        assert((bool) proxy);
-
-        it++;
-
-        if ((session->_ttl -= elapsed_time) >= 0) {
-            continue;
-        }
-
-        switch (session->_status) {
-        case session_status ::WAITING:
-            logger::debug() << "session is now invalid";
-            session->_status = session_status ::INVALID;
-            session->_ttl    = proxy->ttl();
-            break;
-
-        default:
-            proxy->remove_session(session);
-        }
-    }
-}
-#endif
 
 session::session(const std::shared_ptr<proxy> &proxy, const cidr &src, const cidr &dst, const cidr &tgt)
         : _proxy(proxy), _ttl(proxy->timeout()), _src(src), _dst(dst), _tgt(tgt), _status(session_status::WAITING)
@@ -73,9 +39,16 @@ session::~session()
     logger::debug() << "session::~session() this=" << logger::format("%x", this);
 }
 
-void session::add_interface(const std::shared_ptr<interface> &interface)
+void session::update(int elapsed)
 {
-    _interfaces.push_back(interface);
+    if ((_ttl -= elapsed) <= 0 && _status == session_status::WAITING) {
+        auto proxy = _proxy.lock();
+        assert(proxy);
+
+        logger::debug() << "session is now invalid";
+        _status = session_status ::INVALID;
+        _ttl    = proxy->ttl();
+    }
 }
 
 void session::send_ns()
@@ -103,7 +76,6 @@ void session::handle_na()
 
     _status = session_status::VALID;
     _ttl    = proxy->ttl();
-    proxy->interface()->socket()->send_na(_src, _tgt, proxy->router());
     send_na();
 }
 

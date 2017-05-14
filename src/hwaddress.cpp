@@ -19,22 +19,13 @@
 NDPPD_NS_BEGIN
 
 hwaddress::hwaddress()
+        : _addr()
 {
 }
 
-hwaddress::hwaddress(const ether_addr &addr) :
-    _addr(addr)
+hwaddress::hwaddress(const ether_addr &addr)
+        : _addr(addr)
 {
-}
-
-ether_addr &hwaddress::addr()
-{
-    return _addr;
-}
-
-const ether_addr &hwaddress::c_addr() const
-{
-    return _addr;
 }
 
 NDPPD_NS_END

@@ -50,7 +50,7 @@ std::shared_ptr<interface> interface::get_or_create(const std::string &name)
 }
 
 interface::interface(const std::string &name)
-        : _name(name), _icmp6_socket(icmp6_socket::create(name))
+        : _name(name), _socket(icmp6_socket::create(name))
 {
     if (!(_index = if_nametoindex(_name.c_str())))
         throw std::system_error(errno, std::system_category(), "Could not determine interface index");
@@ -59,11 +59,6 @@ interface::interface(const std::string &name)
 interface::~interface()
 {
     logger::debug() << "interface::~interface()";
-}
-
-const std::shared_ptr<ndppd::packet_socket> &interface::packet_socket()
-{
-    return _packet_socket ? _packet_socket : (_packet_socket = packet_socket::create(_name));
 }
 
 NDPPD_NS_END
