@@ -22,7 +22,7 @@
 #include <stack>
 
 #include "ndppd.hpp"
-#include "address.hpp"
+#include "cidr.hpp"
 #include "logger.hpp"
 
 NDPPD_NS_BEGIN
@@ -35,7 +35,7 @@ public:
 
     void skip();
     bool read_string(std::string &value, bool required = true, bool tolower = false);
-    bool read_address(address &value, bool required = true);
+    bool read_address(cidr &value, bool required = true);
     bool read_bool(bool &value, bool required = true);
     bool read_int(int &value, bool required = true);
     bool read_lbr(bool required = true);
@@ -46,7 +46,9 @@ private:
     std::string::const_iterator _it;
 };
 
-class config_error : public std::runtime_error
+//! Exception used whenever there is a configuration error.
+class config_error
+        : public std::runtime_error
 {
 public:
     config_error(const config_reader &reader, const std::string &what);
@@ -61,12 +63,12 @@ class config_rule_section
 public:
     NDPPD_SAFE_CONSTRUCTOR(config_rule_section)
 
-    const ndppd::address &address() const { return _address; }
+    const ndppd::cidr &address() const { return _address; }
 
 private:
     config_rule_section(config_reader &reader);
 
-    ndppd::address _address;
+    ndppd::cidr _address;
 };
 
 //! Class that represents a proxy configuration section.

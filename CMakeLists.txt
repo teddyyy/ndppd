@@ -12,18 +12,16 @@ include_directories(
 
 add_executable(ndppd
         src/ndppd.cpp       src/ndppd.hpp
-        src/address.cpp     src/address.hpp
+        src/cidr.cpp        src/cidr.hpp
         src/config.cpp      src/config.hpp
         src/interface.cpp   src/interface.hpp
         src/logger.cpp      src/logger.hpp
         src/socket.cpp      src/socket.hpp
         src/proxy.cpp       src/proxy.hpp
+        src/rule.cpp        src/rule.hpp
+        src/session.cpp     src/session.hpp
         #src/route.cc
         #src/route.h
-        #src/rule.cc
-        #src/rule.h
-        #src/session.cpp
-        #src/session.hpp
 
         #src/hwaddress.cpp src/hwaddress.hpp
         )

@@ -26,7 +26,7 @@
 
 NDPPD_NS_BEGIN
 
-// ==================================================================================================================//
+// ================================================================================================================= //
 
 std::string config_error::build_error_string(const config_reader &reader, const std::string &what)
 {
@@ -107,7 +107,7 @@ bool config_reader::read_string(std::string &value, bool required, bool tolower)
     return false;
 }
 
-bool config_reader::read_address(address &value, bool required)
+bool config_reader::read_address(cidr &value, bool required)
 {
     std::string temp;
     temp.reserve(64);

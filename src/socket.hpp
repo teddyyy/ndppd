@@ -27,7 +27,7 @@
 #include <poll.h>
 
 #include "ndppd.hpp"
-#include "address.hpp"
+#include "cidr.hpp"
 #include "hwaddress.hpp"
 
 NDPPD_NS_BEGIN
@@ -53,7 +53,7 @@ public:
     ssize_t recv(sockaddr *addr, uint8_t *buf, size_t size) const;
 
     //! Sends a message.
-    ssize_t send(const address &dst, const uint8_t *buf, size_t size) const;
+    ssize_t send(const cidr &dst, const uint8_t *buf, size_t size) const;
 
     void register_event_handler(int events, event_handler eh);
 
@@ -76,18 +76,17 @@ public:
     NDPPD_SAFE_CONSTRUCTOR(icmp6_socket)
 
     //! Receive a neighbor advertisement message.
-    ssize_t recv_na(address &src, address &tgt) const;
+    ssize_t recv_na(cidr &src, cidr &tgt) const;
 
     //! Send a neighbor advertisement message.
-    ssize_t send_na(const address &dst, const address &tgt, bool router) const;
+    ssize_t send_na(const cidr &dst, const cidr &tgt, bool router) const;
 
     //! Send a neighbor solicitation message.
-    ssize_t send_ns(const address &tgt) const;
+    ssize_t send_ns(const cidr &tgt) const;
 
 private:
     explicit icmp6_socket(const std::string &ifname);
 };
-
 
 /*! Socket for receiving neighbor solicitation messages. */
 class packet_socket
@@ -97,7 +96,7 @@ public:
     NDPPD_SAFE_CONSTRUCTOR(packet_socket)
 
     /*! Receive neighbor solicitation message. */
-    ssize_t recv_ns(address &src, address &dst, address &tgt) const;
+    ssize_t recv_ns(cidr &src, cidr &dst, cidr &tgt) const;
 
 private:
     explicit packet_socket(const std::string &ifname);

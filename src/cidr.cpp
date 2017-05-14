@@ -22,39 +22,39 @@
 #include <netinet/ip6.h>
 #include <arpa/inet.h>
 
-#include "address.hpp"
+#include "cidr.hpp"
 
 NDPPD_NS_BEGIN
 
-address::address()
+cidr::cidr()
 {
     reset();
 }
 
-address::address(const address &address)
+cidr::cidr(const cidr &cidr)
 {
-    _addr.s6_addr32[0] = address._addr.s6_addr32[0];
-    _addr.s6_addr32[1] = address._addr.s6_addr32[1];
-    _addr.s6_addr32[2] = address._addr.s6_addr32[2];
-    _addr.s6_addr32[3] = address._addr.s6_addr32[3];
+    _addr.s6_addr32[0] = cidr._addr.s6_addr32[0];
+    _addr.s6_addr32[1] = cidr._addr.s6_addr32[1];
+    _addr.s6_addr32[2] = cidr._addr.s6_addr32[2];
+    _addr.s6_addr32[3] = cidr._addr.s6_addr32[3];
 
-    _mask.s6_addr32[0] = address._mask.s6_addr32[0];
-    _mask.s6_addr32[1] = address._mask.s6_addr32[1];
-    _mask.s6_addr32[2] = address._mask.s6_addr32[2];
-    _mask.s6_addr32[3] = address._mask.s6_addr32[3];
+    _mask.s6_addr32[0] = cidr._mask.s6_addr32[0];
+    _mask.s6_addr32[1] = cidr._mask.s6_addr32[1];
+    _mask.s6_addr32[2] = cidr._mask.s6_addr32[2];
+    _mask.s6_addr32[3] = cidr._mask.s6_addr32[3];
 }
 
-address::address(const std::string &string)
-{
-    parse_string(string);
-}
-
-address::address(const char *string)
+cidr::cidr(const std::string &string)
 {
     parse_string(string);
 }
 
-address::address(const in6_addr &addr)
+cidr::cidr(const char *string)
+{
+    parse_string(string);
+}
+
+cidr::cidr(const in6_addr &addr)
 {
     _addr.s6_addr32[0] = addr.s6_addr32[0];
     _addr.s6_addr32[1] = addr.s6_addr32[1];
@@ -67,7 +67,7 @@ address::address(const in6_addr &addr)
     _mask.s6_addr32[3] = 0xffffffff;
 }
 
-address::address(const in6_addr &addr, const in6_addr& mask)
+cidr::cidr(const in6_addr &addr, const in6_addr& mask)
 {
     _addr.s6_addr32[0] = addr.s6_addr32[0];
     _addr.s6_addr32[1] = addr.s6_addr32[1];
@@ -80,7 +80,7 @@ address::address(const in6_addr &addr, const in6_addr& mask)
     _mask.s6_addr32[3] = mask.s6_addr32[3];
 }
 
-address::address(const in6_addr &addr, int pf)
+cidr::cidr(const in6_addr &addr, int pf)
 {
     _addr.s6_addr32[0] = addr.s6_addr32[0];
     _addr.s6_addr32[1] = addr.s6_addr32[1];
@@ -90,7 +90,7 @@ address::address(const in6_addr &addr, int pf)
     prefix(pf);
 }
 
-bool address::operator==(const address &address) const
+bool cidr::operator==(const cidr &address) const
 {
     return !(((_addr.s6_addr32[0] ^ address._addr.s6_addr32[0]) & _mask.s6_addr32[0]) |
              ((_addr.s6_addr32[1] ^ address._addr.s6_addr32[1]) & _mask.s6_addr32[1]) |
@@ -98,7 +98,7 @@ bool address::operator==(const address &address) const
              ((_addr.s6_addr32[3] ^ address._addr.s6_addr32[3]) & _mask.s6_addr32[3]));
 }
 
-bool address::operator!=(const address &address) const
+bool cidr::operator!=(const cidr &address) const
 {
     return (((_addr.s6_addr32[0] ^ address._addr.s6_addr32[0]) & _mask.s6_addr32[0]) |
             ((_addr.s6_addr32[1] ^ address._addr.s6_addr32[1]) & _mask.s6_addr32[1]) |
@@ -106,7 +106,7 @@ bool address::operator!=(const address &address) const
             ((_addr.s6_addr32[3] ^ address._addr.s6_addr32[3]) & _mask.s6_addr32[3])) != 0;
 }
 
-void address::reset()
+void cidr::reset()
 {
     _addr.s6_addr32[0] = 0;
     _addr.s6_addr32[1] = 0;
@@ -119,7 +119,7 @@ void address::reset()
     _mask.s6_addr32[3] = 0xffffffff;
 }
 
-int address::prefix() const
+int cidr::prefix() const
 {
     if (!_mask.s6_addr[0]) {
         return 0;
@@ -136,7 +136,7 @@ int address::prefix() const
     return 128;
 }
 
-void address::prefix(int value)
+void cidr::prefix(int value)
 {
     constexpr unsigned char maskbit[] = {
         0x00, 0x80, 0xc0, 0xe0, 0xf0,
@@ -167,7 +167,7 @@ void address::prefix(int value)
     _mask.s6_addr[offset] = maskbit[value % 8];
 }
 
-const std::string address::to_string() const
+const std::string cidr::to_string() const
 {
     char buf[INET6_ADDRSTRLEN + 8];
 
@@ -185,7 +185,7 @@ const std::string address::to_string() const
     return buf;
 }
 
-bool address::parse_string(const std::string &str)
+bool cidr::parse_string(const std::string &str)
 {
     char buf[INET6_ADDRSTRLEN], *b;
     int sz;
@@ -257,7 +257,7 @@ bool address::parse_string(const std::string &str)
     return true;
 }
 
-address::operator std::string() const
+cidr::operator std::string() const
 {
     return to_string();
 }

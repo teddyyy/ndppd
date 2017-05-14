@@ -132,7 +132,7 @@ ssize_t socket::recv(sockaddr *saddr, uint8_t *buf, size_t size) const
     return len;
 }
 
-ssize_t socket::send(const address &dst, const uint8_t *buf, size_t size) const
+ssize_t socket::send(const cidr &dst, const uint8_t *buf, size_t size) const
 {
     sockaddr_in6 addr;
     memset(&addr, 0, sizeof(sockaddr_in6));
@@ -229,7 +229,7 @@ packet_socket::packet_socket(const std::string &ifname)
         throw std::system_error(errno, std::system_category(), "Failed to set filter");
 }
 
-ssize_t packet_socket::recv_ns(address &src, address &dst, address &tgt) const
+ssize_t packet_socket::recv_ns(cidr &src, cidr &dst, cidr &tgt) const
 {
     sockaddr_ll t_saddr;
     uint8_t msg[256];
@@ -289,7 +289,7 @@ icmp6_socket::icmp6_socket(const std::string &ifname)
         throw std::system_error(errno, std::system_category(), "Failed to set icmp filter");
 }
 
-ssize_t icmp6_socket::recv_na(address &src, address &tgt) const
+ssize_t icmp6_socket::recv_na(cidr &src, cidr &tgt) const
 {
     sockaddr_in6 t_saddr;
     uint8_t msg[256];
@@ -311,7 +311,7 @@ ssize_t icmp6_socket::recv_na(address &src, address &tgt) const
     return len;
 }
 
-ssize_t icmp6_socket::send_na(const address &dst, const address &tgt, bool router) const
+ssize_t icmp6_socket::send_na(const cidr &dst, const cidr &tgt, bool router) const
 {
     uint8_t buf[128];
 
@@ -336,7 +336,7 @@ ssize_t icmp6_socket::send_na(const address &dst, const address &tgt, bool route
     return send(dst, buf, sizeof(nd_neighbor_advert) + sizeof(nd_opt_hdr) + sizeof(ether_addr));
 }
 
-ssize_t icmp6_socket::send_ns(const address &tgt) const
+ssize_t icmp6_socket::send_ns(const cidr &tgt) const
 {
     uint8_t buf[128];
     memset(buf, 0, sizeof(buf));
@@ -353,9 +353,9 @@ ssize_t icmp6_socket::send_ns(const address &tgt) const
     //*(ether_addr *)(buf + sizeof(nd_neighbor_solicit) + sizeof(nd_opt_hdr)) = _hwaddress.c_addr();
 
     // FIXME: Alright, I'm lazy.
-    static address multicast("ff02::1:ff00:0000");
+    static cidr multicast("ff02::1:ff00:0000");
 
-    address dst;
+    cidr dst;
 
     dst = multicast;
 

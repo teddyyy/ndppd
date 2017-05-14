@@ -39,22 +39,12 @@ class session
 public:
     static void update_all(int elapsed_time);
 
-    NDPPD_SAFE_CONSTRUCTOR(session, _sessions.push_back(this_ptr))
+    NDPPD_SAFE_CONSTRUCTOR(session)
 
     // Destructor.
     ~session();
 
-    void add_iface(const std::string &ifname);
-
-    const address &tgt() const;
-
-    const address &dst() const;
-
-    const address &src() const;
-
-    session_status status() const;
-
-    void status(session_status value);
+    void add_interface(const std::shared_ptr<interface> &interface);
 
     void handle_na();
 
@@ -64,14 +54,22 @@ public:
 
     void refesh();
 
+    const cidr &tgt() const { return _tgt; }
+
+    const cidr &dst() const { return _dst; }
+
+    const cidr &src() const { return _src; }
+
+    void status(session_status status) { _status = status; }
+
+    session_status status() const { return _status; }
+
 private:
-    static std::list<std::weak_ptr<session>> _sessions;
+    session(const std::shared_ptr<proxy> &proxy, const cidr &src, const cidr &dst, const cidr &tgt);
 
-    session(const std::shared_ptr<proxy> &proxy, const address &src, const address &dst, const address &tgt);
+    std::weak_ptr<proxy> _proxy;
 
-    std::weak_ptr<ndppd::proxy> _proxy;
-
-    address _src, _dst, _tgt;
+    cidr _src, _dst, _tgt;
 
     /*! The remaining time in milliseconds the object will stay in the interface's session array or cache. */
     int _ttl;
@@ -79,11 +77,11 @@ private:
     /*! Current session status, */
     session_status _status;
 
-    /*! An list of sockets this session is monitoring for ND_NEIGHBOR_ADVERT on. */
-    std::list<std::shared_ptr<ine6_socket>> _sockets;
+    /*! An list of interfaces this session is monitoring for ND_NEIGHBOR_ADVERT on. */
+    std::list<std::shared_ptr<interface>> _interfaces;
 
 };
 
 NDPPD_NS_END
 
-#endif
+#endif // NDPPD_SESSION_HPP

@@ -26,7 +26,7 @@
 #include <memory>
 
 #include "ndppd.hpp"
-#include "address.hpp"
+#include "cidr.hpp"
 
 NDPPD_NS_BEGIN
 
@@ -64,9 +64,11 @@ private:
 
     proxy(const std::string &ifname);
 
-    void handle_solicit(const address &source, const address &destination, const address &target);
+    void handle_ns(const cidr &source, const cidr &destination, const cidr &target);
 
     std::shared_ptr<class interface> _interface;
+
+    std::shared_ptr<packet_socket> _socket;
 
     std::list<std::shared_ptr<rule>> _rules;
 

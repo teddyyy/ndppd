@@ -26,7 +26,7 @@
 #include <net/ethernet.h>
 
 #include "ndppd.hpp"
-#include "address.hpp"
+#include "cidr.hpp"
 #include "hwaddress.hpp"
 #include "socket.hpp"
 
@@ -46,9 +46,11 @@ public:
     ~interface();
 
     //! Returns the name of the interface.
-    const std::string &name() const;
+    const std::string &name() const { return _name; }
 
-    const std::shared_ptr<ndppd::packet_socket> &packet_socket();
+    int index() const { return _index; }
+
+    const std::shared_ptr<icmp6_socket> &socket() const { return _socket; };
 
 private:
     static std::map<std::string, std::weak_ptr<interface>> _interfaces;
@@ -61,9 +63,7 @@ private:
 
     int _index;
 
-    std::shared_ptr<icmp6_socket> _icmp6_socket;
-
-    std::shared_ptr<ndppd::packet_socket> _packet_socket;
+    std::shared_ptr<icmp6_socket> _socket;
 };
 
 NDPPD_NS_END

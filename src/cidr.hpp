@@ -24,28 +24,28 @@
 
 NDPPD_NS_BEGIN
 
-//! Class for working with IPv6 addresses.
-class address
+//! Class for working with IPv6 addresses and masks.
+class cidr
 {
 public:
     //! Default constructor.
-    address();
+    cidr();
 
     //! Copy constructor.
-    address(const address &address);
+    cidr(const cidr &cidr);
 
-    address(const std::string &str);
-    address(const char *str);
-    address(const in6_addr &address);
-    address(const in6_addr &address, const in6_addr &addr);
-    address(const in6_addr &address, int prefix);
+    cidr(const std::string &str);
+    cidr(const char *str);
+    cidr(const in6_addr &addr);
+    cidr(const in6_addr &addr, const in6_addr &addr);
+    cidr(const in6_addr &addr, int prefix);
 
     // Compare _a/_m against a._a.
-    bool operator==(const address &address) const;
+    bool operator==(const cidr &address) const;
 
-    bool operator!=(const address &address) const;
+    bool operator!=(const cidr &address) const;
 
-    bool in(const address &address) const;
+    bool in(const cidr &address) const;
 
     void reset();
 

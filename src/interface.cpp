@@ -61,15 +61,9 @@ interface::~interface()
     logger::debug() << "interface::~interface()";
 }
 
-const std::string &interface::name() const
-{
-    return _name;
-}
-
 const std::shared_ptr<ndppd::packet_socket> &interface::packet_socket()
 {
     return _packet_socket ? _packet_socket : (_packet_socket = packet_socket::create(_name));
 }
 
 NDPPD_NS_END
-

@@ -16,12 +16,10 @@
 
 #include "ndppd.hpp"
 #include "proxy.hpp"
-#include "route.h"
 #include "interface.hpp"
-#include "rule.h"
+#include "rule.hpp"
 #include "session.hpp"
 #include "logger.hpp"
-#include "socket.hpp"
 
 NDPPD_NS_BEGIN
 
@@ -37,19 +35,20 @@ std::shared_ptr<proxy> proxy::get_or_create(const std::string &name)
 
 proxy::proxy(const std::string &ifname)
         : _router(true), _ttl(30000), _timeout(500),
-          _interface(interface::get_or_create(ifname))
+          _interface(interface::get_or_create(ifname)),
+          _socket(packet_socket::create(ifname))
 {
     logger::debug() << "proxy::proxy() ifname=" << _interface->name();
-    _interface->packet_socket()->register_event_handler(
+    _socket->register_event_handler(
             POLLIN,
             [](const std::shared_ptr<socket> &socket, int events) -> {
-                address src, dst, tgt;
+                cidr src, dst, tgt;
                 static_pointer_cast<packet_socket>(socket)->read_ns(src, dst, tgt);
-                handle_solicit(src, dst, tgt);
+                handle_ns(src, dst, tgt);
             });
 }
 
-void proxy::handle_solicit(const address &src, const address &dst, const address &tgt)
+void proxy::handle_ns(const cidr &src, const cidr &dst, const cidr &tgt)
 {
     logger::debug() << "proxy::handle_solicit() source=" << src.to_string()
                     << ", target=" << tgt.to_string();
@@ -78,55 +77,24 @@ void proxy::handle_solicit(const address &src, const address &dst, const address
     std::shared_ptr<session> session;
 
     for (auto rule : _rules) {
-        logger::debug() << "checking " << rule->address() << " against " << tgt;
+        logger::debug() << "checking " << rule->cidr() << " against " << tgt;
 
-        if (!dst.is_multicast() && rule->address() != dst)
+        if (!(dst.is_multicast() && rule->cidr() != dst) || rule->cidr() != tgt)
             continue;
 
-        if (rule->address() == tgt) {
-            if (!session) {
-                session = session::create(_ptr, saddr, daddr, taddr);
-            }
+        if (!session)
+            session = session::create(shared_from_this(), src, dst, tgt);
 
-#ifdef ASDF
-            if (rule->is_auto()) {
+        rule->execute(session);
 
-
-                ptr<route> rt = route::find(taddr);
-
-                if (rt->ifname() == _ifa->name()) {
-                    logger::debug() << "skipping route since it's using interface " << rt->ifname();
-                } else {
-                    ptr<iface> ifa = rt->ifa();
-
-                    if (ifa && (ifa != rule->ifa())) {
-                        se->add_iface(ifa);
-                    }
-                }
-            } else if (!rule->interface()) {
-                // This rule doesn't have an interface, and thus we'll consider
-                // it "static" and immediately send the response.
-                se->handle_advert();
-                return;
-            } else {
-                se->add_iface((*it)->ifa());
-                #ifdef WITH_ND_NETLINK
-                if (if_addr_find((*it)->ifa()->name(), &taddr.const_addr())) {
-                    logger::debug() << "Sending NA out " << (*it)->ifa()->name();
-                    se->add_iface(_ifa);
-                    se->handle_advert();
-                }
-                #endif
-            }
-#endif
-        }
+        if (session->status() != session_status::WAITING)
+            break;
     }
 
-    if (se) {
-        _sessions.push_back(se);
-        se->send_solicit();
+    if (session && session->status() == session_status::WAITING) {
+        _sessions.push_back(session);
+        session->send_ns();
     }
 }
 
 NDPPD_NS_END
-
