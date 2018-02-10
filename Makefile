@@ -9,6 +9,9 @@ CXX     ?= g++
 GZIP    ?= /bin/gzip
 MANDIR  ?= ${DESTDIR}${PREFIX}/share/man
 SBINDIR ?= ${DESTDIR}${PREFIX}/sbin
+SRVDIR  ?= /etc/systemd/system
+PIDDIR  ?= /var/run/ndppd
+ETCDIR  ?= /etc
 PKG_CONFIG ?= pkg-config
 
 
@@ -24,11 +27,13 @@ endif
 all: ndppd ndppd.1.gz ndppd.conf.5.gz
 
 install: all
-	mkdir -p ${SBINDIR} ${MANDIR} ${MANDIR}/man1 ${MANDIR}/man5
+	mkdir -p ${SBINDIR} ${MANDIR} ${MANDIR}/man1 ${MANDIR}/man5 ${PIDDIR}
 	cp ndppd ${SBINDIR}
 	chmod +x ${SBINDIR}/ndppd
 	cp ndppd.1.gz ${MANDIR}/man1
 	cp ndppd.conf.5.gz ${MANDIR}/man5
+	cp ndppd.service ${SRVDIR}/ndppd.service
+	cp ndppd.conf ${ETCDIR}/ndppd.conf
 
 ndppd.1.gz:
 	${GZIP} < ndppd.1 > ndppd.1.gz
