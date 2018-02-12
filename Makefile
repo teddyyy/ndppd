@@ -10,7 +10,6 @@ GZIP    ?= /bin/gzip
 MANDIR  ?= ${DESTDIR}${PREFIX}/share/man
 SBINDIR ?= ${DESTDIR}${PREFIX}/sbin
 SRVDIR  ?= /etc/systemd/system
-PIDDIR  ?= /var/run/ndppd
 ETCDIR  ?= /etc
 PKG_CONFIG ?= pkg-config
 
@@ -27,7 +26,7 @@ endif
 all: ndppd ndppd.1.gz ndppd.conf.5.gz
 
 install: all
-	mkdir -p ${SBINDIR} ${MANDIR} ${MANDIR}/man1 ${MANDIR}/man5 ${PIDDIR}
+	mkdir -p ${SBINDIR} ${MANDIR} ${MANDIR}/man1 ${MANDIR}/man5
 	cp ndppd ${SBINDIR}
 	chmod +x ${SBINDIR}/ndppd
 	cp ndppd.1.gz ${MANDIR}/man1
